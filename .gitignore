@@ -28,5 +28,24 @@ Thumbs.db
 **/coverage/
 
 # Archivos temporales
+*.log
 *.tmp
 *.bak
+
+# React y Vite
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Configuracion local
+.env
+.env.*
+!.env.example
+**/application-local.properties
+**/application-secret.properties
+**/application-secrets.properties
+
+
+# Carpetas temporales del desarrollo
+/frontend-vite-temp/
+/respaldo-frontend/
