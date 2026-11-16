@@ -857,3 +857,56 @@ body {
   font-size: 12px;
   font-weight: 600;
 }
+
+
+/* ==========================================
+   ETAPA 36 - KANBAN DRAG AND DROP
+   ========================================== */
+
+.kanban-contenido .tarjeta-tablero[draggable="true"] {
+  cursor: grab;
+}
+
+.kanban-contenido .tarjeta-tablero[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.tarjeta-arrastrando {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+.kanban-columna {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+  min-height: 250px;
+}
+
+.kanban-columna-destino {
+  background-color: #dbeafe;
+  border: 2px dashed #2563eb;
+}
+
+.kanban-instruccion {
+  font-size: 12px;
+  color: #64748b;
+  margin: 12px 0 4px;
+  font-style: italic;
+}
+
+.kanban-contenido {
+  min-height: 150px;
+}
+
+.kanban-vacio {
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 650px) {
+  .kanban-instruccion {
+    display: none;
+  }
+}

@@ -2,10 +2,7 @@
 import { useState } from 'react';
 
 import TareaResumen from './TareaResumen';
-
-import {
-  actualizarTarea
-} from '../services/tareaService';
+import { actualizarTarea } from '../services/tareaService';
 
 import {
   obtenerEstadoVencimiento,
@@ -25,18 +22,9 @@ const VALOR_PRIORIDAD = {
 };
 
 const COLUMNAS_KANBAN = [
-  {
-    codigo: 'PENDIENTE',
-    titulo: 'Pendientes'
-  },
-  {
-    codigo: 'EN_PROGRESO',
-    titulo: 'En progreso'
-  },
-  {
-    codigo: 'FINALIZADA',
-    titulo: 'Finalizadas'
-  }
+  { codigo: 'PENDIENTE', titulo: 'Pendientes' },
+  { codigo: 'EN_PROGRESO', titulo: 'En progreso' },
+  { codigo: 'FINALIZADA', titulo: 'Finalizadas' }
 ];
 
 function TarjetaTablero({
@@ -46,18 +34,33 @@ function TarjetaTablero({
   cargando,
   vistaKanban,
   cambiarEstado,
-  guardandoTareaId
+  guardandoTareaId,
+  iniciarArrastre,
+  terminarArrastre,
+  tareaArrastradaId
 }) {
   const alerta = obtenerEstadoVencimiento(tarea);
-
   const guardando = guardandoTareaId === tarea.id;
+
+  const arrastrando = tareaArrastradaId === tarea.id;
+
+  const bloqueada =
+    cargando || guardandoTareaId !== null;
 
   return (
     <article
       className={
         `tarjeta tarjeta-tablero ` +
-        `tarjeta-vencimiento-${alerta.codigo}`
+        `tarjeta-vencimiento-${alerta.codigo} ` +
+        (arrastrando ? 'tarjeta-arrastrando' : '')
       }
+      draggable={vistaKanban && !bloqueada}
+      onDragStart={(evento) => {
+        if (vistaKanban && !bloqueada) {
+          iniciarArrastre(evento, tarea);
+        }
+      }}
+      onDragEnd={terminarArrastre}
     >
       <div className="tarjeta-tablero-encabezado">
         <h3>{tarea.titulo}</h3>
@@ -75,9 +78,7 @@ function TarjetaTablero({
         Proyecto: {nombreProyecto}
       </p>
 
-      <p>
-        {tarea.descripcion || 'Sin descripción'}
-      </p>
+      <p>{tarea.descripcion || 'Sin descripción'}</p>
 
       <div className="tarea-detalles">
         <span className={`estado ${tarea.estado}`}>
@@ -99,41 +100,47 @@ function TarjetaTablero({
       </div>
 
       {vistaKanban && (
-        <div className="kanban-cambiar-estado">
-          <label htmlFor={`estado-tarea-${tarea.id}`}>
-            Cambiar estado
-          </label>
+        <>
+          <p className="kanban-instruccion">
+            Arrastra esta tarjeta a otra columna.
+          </p>
 
-          <select
-            id={`estado-tarea-${tarea.id}`}
-            value={tarea.estado}
-            onChange={(evento) =>
-              cambiarEstado(tarea, evento.target.value)
-            }
-            disabled={
-              cargando || guardandoTareaId !== null
-            }
-          >
-            <option value="PENDIENTE">
-              Pendiente
-            </option>
-            <option value="EN_PROGRESO">
-              En progreso
-            </option>
-            <option value="FINALIZADA">
-              Finalizada
-            </option>
-          </select>
+          <div className="kanban-cambiar-estado">
+            <label htmlFor={`estado-tarea-${tarea.id}`}>
+              Cambiar estado
+            </label>
 
-          {guardando && (
-            <span
-              className="kanban-guardando"
-              role="status"
+            <select
+              id={`estado-tarea-${tarea.id}`}
+              value={tarea.estado}
+              onChange={(evento) =>
+                cambiarEstado(tarea, evento.target.value)
+              }
+              disabled={bloqueada}
+              onDragStart={(evento) =>
+                evento.stopPropagation()
+              }
             >
-              Guardando cambio...
-            </span>
-          )}
-        </div>
+              {COLUMNAS_KANBAN.map((columna) => (
+                <option
+                  key={columna.codigo}
+                  value={columna.codigo}
+                >
+                  {NOMBRES_ESTADO[columna.codigo]}
+                </option>
+              ))}
+            </select>
+
+            {guardando && (
+              <span
+                className="kanban-guardando"
+                role="status"
+              >
+                Guardando cambio...
+              </span>
+            )}
+          </div>
+        </>
       )}
 
       <div className="acciones-tarjeta">
@@ -142,8 +149,7 @@ function TarjetaTablero({
           className="boton-tareas"
           onClick={() => abrirTarea(tarea)}
           disabled={
-            cargando ||
-            guardandoTareaId !== null ||
+            bloqueada ||
             typeof abrirTarea !== 'function'
           }
         >
@@ -178,6 +184,12 @@ function TableroGeneral({
   const [mensajeEstado, setMensajeEstado] = useState('');
   const [errorEstado, setErrorEstado] = useState('');
 
+  const [tareaArrastradaId, setTareaArrastradaId] =
+    useState(null);
+
+  const [columnaDestino, setColumnaDestino] =
+    useState(null);
+
   const nombresProyectos = new Map(
     proyectos.map((proyecto) => [
       proyecto.id,
@@ -191,6 +203,11 @@ function TableroGeneral({
       cargando ||
       tarea.estado === nuevoEstado
     ) {
+      return;
+    }
+
+    if (!NOMBRES_ESTADO[nuevoEstado]) {
+      setErrorEstado('Estado de tarea no válido.');
       return;
     }
 
@@ -211,7 +228,7 @@ function TableroGeneral({
 
       await actualizarTarea(tarea.id, datos);
 
-      // Volver a consultar PostgreSQL mediante la API.
+      // Recargar las tareas desde la API.
       await recargar();
 
       setMensajeEstado(
@@ -221,11 +238,79 @@ function TableroGeneral({
     } catch (err) {
       setErrorEstado(
         err.message ||
-        'No se pudo completar la operación.'
+        'No se pudo actualizar la tarea.'
       );
     } finally {
       setGuardandoTareaId(null);
     }
+  }
+
+  function iniciarArrastre(evento, tarea) {
+    if (guardandoTareaId !== null || cargando) {
+      evento.preventDefault();
+      return;
+    }
+
+    evento.dataTransfer.effectAllowed = 'move';
+
+    evento.dataTransfer.setData(
+      'text/plain',
+      String(tarea.id)
+    );
+
+    setTareaArrastradaId(tarea.id);
+    setMensajeEstado('');
+    setErrorEstado('');
+  }
+
+  function terminarArrastre() {
+    setTareaArrastradaId(null);
+    setColumnaDestino(null);
+  }
+
+  function permitirSoltar(evento, codigoColumna) {
+    if (
+      tareaArrastradaId === null ||
+      guardandoTareaId !== null ||
+      cargando
+    ) {
+      return;
+    }
+
+    evento.preventDefault();
+    evento.dataTransfer.dropEffect = 'move';
+
+    setColumnaDestino(codigoColumna);
+  }
+
+  async function soltarTarea(evento, nuevoEstado) {
+    evento.preventDefault();
+
+    const idTexto =
+      evento.dataTransfer.getData('text/plain');
+
+    const id = Number(idTexto);
+
+    setTareaArrastradaId(null);
+    setColumnaDestino(null);
+
+    if (
+      !Number.isSafeInteger(id) ||
+      guardandoTareaId !== null ||
+      cargando
+    ) {
+      return;
+    }
+
+    const tarea = tareas.find(
+      (item) => item.id === id
+    );
+
+    if (!tarea || tarea.estado === nuevoEstado) {
+      return;
+    }
+
+    await cambiarEstado(tarea, nuevoEstado);
   }
 
   const tareasFiltradas = tareas.filter((tarea) => {
@@ -278,9 +363,7 @@ function TableroGeneral({
           (VALOR_PRIORIDAD[b.prioridad] || 0) -
           (VALOR_PRIORIDAD[a.prioridad] || 0);
 
-        if (diferencia !== 0) {
-          return diferencia;
-        }
+        if (diferencia !== 0) return diferencia;
       }
 
       if (ordenamiento === 'FECHA') {
@@ -298,9 +381,7 @@ function TableroGeneral({
               b.fechaVencimiento
             );
 
-          if (diferencia !== 0) {
-            return diferencia;
-          }
+          if (diferencia !== 0) return diferencia;
         }
       }
 
@@ -336,6 +417,9 @@ function TableroGeneral({
         vistaKanban={vistaTablero === 'KANBAN'}
         cambiarEstado={cambiarEstado}
         guardandoTareaId={guardandoTareaId}
+        iniciarArrastre={iniciarArrastre}
+        terminarArrastre={terminarArrastre}
+        tareaArrastradaId={tareaArrastradaId}
       />
     );
   }
@@ -522,6 +606,7 @@ function TableroGeneral({
                 }
                 aria-pressed={vistaTablero === 'LISTA'}
                 onClick={() => setVistaTablero('LISTA')}
+                disabled={guardandoTareaId !== null}
               >
                 Lista
               </button>
@@ -533,6 +618,7 @@ function TableroGeneral({
                 }
                 aria-pressed={vistaTablero === 'KANBAN'}
                 onClick={() => setVistaTablero('KANBAN')}
+                disabled={guardandoTareaId !== null}
               >
                 Kanban
               </button>
@@ -559,13 +645,41 @@ function TableroGeneral({
                       tarea.estado === columna.codigo
                   );
 
+                const resaltada =
+                  columnaDestino === columna.codigo &&
+                  tareaArrastradaId !== null;
+
                 return (
                   <section
+                    key={columna.codigo}
                     className={
                       `kanban-columna ` +
-                      `kanban-${columna.codigo}`
+                      `kanban-${columna.codigo} ` +
+                      (resaltada
+                        ? 'kanban-columna-destino'
+                        : '')
                     }
-                    key={columna.codigo}
+                    onDragOver={(evento) =>
+                      permitirSoltar(
+                        evento,
+                        columna.codigo
+                      )
+                    }
+                    onDragLeave={(evento) => {
+                      if (
+                        !evento.currentTarget.contains(
+                          evento.relatedTarget
+                        )
+                      ) {
+                        setColumnaDestino(null);
+                      }
+                    }}
+                    onDrop={(evento) =>
+                      soltarTarea(
+                        evento,
+                        columna.codigo
+                      )
+                    }
                   >
                     <div className="kanban-encabezado">
                       <h3>{columna.titulo}</h3>
@@ -578,7 +692,7 @@ function TableroGeneral({
                     <div className="kanban-contenido">
                       {tareasColumna.length === 0 ? (
                         <p className="kanban-vacio">
-                          No hay tareas en este estado.
+                          Arrastra una tarea aquí.
                         </p>
                       ) : (
                         tareasColumna.map(
