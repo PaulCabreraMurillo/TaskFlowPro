@@ -3,8 +3,11 @@ package com.taskflow.backend.service;
 
 import com.taskflow.backend.dto.TareaRequest;
 import com.taskflow.backend.dto.TareaResponse;
+import com.taskflow.backend.entity.Responsable;
 import com.taskflow.backend.entity.Tarea;
+import com.taskflow.backend.model.Proyecto;
 import com.taskflow.backend.repository.ProyectoRepository;
+import com.taskflow.backend.repository.ResponsableRepository;
 import com.taskflow.backend.repository.TareaRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +37,9 @@ class TareaServiceTest {
     @Mock
     private ProyectoRepository proyectoRepository;
 
+    @Mock
+    private ResponsableRepository responsableRepository;
+
     @InjectMocks
     private TareaService tareaService;
 
@@ -44,7 +50,6 @@ class TareaServiceTest {
     void prepararDatos() {
 
         tarea = new Tarea();
-
         tarea.setId(1L);
         tarea.setTitulo("Diseñar interfaz");
         tarea.setDescripcion("Crear pantalla");
@@ -64,12 +69,31 @@ class TareaServiceTest {
         );
     }
 
-    private void asignarProyecto(Tarea tarea) {
-        // Sustituye el import de Proyecto si está
-        // declarado en otro paquete.
-        var proyecto = new com.taskflow.backend.model.Proyecto();
+    private Proyecto crearProyecto() {
+
+        Proyecto proyecto = new Proyecto();
         proyecto.setId(1L);
-        tarea.setProyecto(proyecto);
+
+        return proyecto;
+    }
+
+    private void asignarProyecto(Tarea tarea) {
+
+        tarea.setProyecto(crearProyecto());
+    }
+
+    private Responsable crearResponsable(
+            Long id,
+            boolean activo) {
+
+        Responsable responsable = new Responsable();
+
+        responsable.setId(id);
+        responsable.setNombre("Responsable de prueba");
+        responsable.setCorreo("prueba@example.com");
+        responsable.setActivo(activo);
+
+        return responsable;
     }
 
     @Test
@@ -84,8 +108,11 @@ class TareaServiceTest {
                 tareaService.listar();
 
         assertEquals(1, resultado.size());
-        assertEquals("Diseñar interfaz",
-                resultado.get(0).titulo());
+
+        assertEquals(
+                "Diseñar interfaz",
+                resultado.get(0).titulo()
+        );
 
         verify(tareaRepository).findAll();
     }
@@ -105,7 +132,11 @@ class TareaServiceTest {
                 tareaService.listarPorProyecto(1L);
 
         assertEquals(1, resultado.size());
-        assertEquals(1L, resultado.get(0).proyectoId());
+
+        assertEquals(
+                1L,
+                resultado.get(0).proyectoId()
+        );
     }
 
     @Test
@@ -120,24 +151,27 @@ class TareaServiceTest {
                 tareaService.obtenerPorId(1L);
 
         assertEquals(1L, resultado.id());
-        assertEquals("Diseñar interfaz",
-                resultado.titulo());
+
+        assertEquals(
+                "Diseñar interfaz",
+                resultado.titulo()
+        );
     }
 
     @Test
     void debeCrearTarea() {
 
-        var proyecto = new com.taskflow.backend.model.Proyecto();
-        proyecto.setId(1L);
-
         when(proyectoRepository.findById(1L))
-                .thenReturn(Optional.of(proyecto));
+                .thenReturn(Optional.of(crearProyecto()));
 
         when(tareaRepository.save(any(Tarea.class)))
                 .thenAnswer(invocacion -> {
+
                     Tarea guardada =
                             invocacion.getArgument(0);
+
                     guardada.setId(1L);
+
                     return guardada;
                 });
 
@@ -145,18 +179,22 @@ class TareaServiceTest {
                 tareaService.crear(request);
 
         assertEquals(1L, resultado.id());
-        assertEquals("Diseñar interfaz",
-                resultado.titulo());
+
+        assertEquals(
+                "Diseñar interfaz",
+                resultado.titulo()
+        );
+
         assertEquals(1L, resultado.proyectoId());
 
-        verify(tareaRepository).save(any(Tarea.class));
+        assertNull(resultado.responsableId());
+
+        verify(tareaRepository)
+                .save(any(Tarea.class));
     }
 
     @Test
     void debeActualizarTarea() {
-
-        var proyecto = new com.taskflow.backend.model.Proyecto();
-        proyecto.setId(1L);
 
         asignarProyecto(tarea);
 
@@ -164,7 +202,7 @@ class TareaServiceTest {
                 .thenReturn(Optional.of(tarea));
 
         when(proyectoRepository.findById(1L))
-                .thenReturn(Optional.of(proyecto));
+                .thenReturn(Optional.of(crearProyecto()));
 
         when(tareaRepository.save(any(Tarea.class)))
                 .thenAnswer(invocacion ->
@@ -181,13 +219,20 @@ class TareaServiceTest {
         );
 
         TareaResponse resultado =
-                tareaService.actualizar(1L, actualizado);
+                tareaService.actualizar(
+                        1L,
+                        actualizado
+                );
 
-        assertEquals("Interfaz actualizada",
-                resultado.titulo());
+        assertEquals(
+                "Interfaz actualizada",
+                resultado.titulo()
+        );
 
-        assertEquals("EN_PROGRESO",
-                resultado.estado());
+        assertEquals(
+                "EN_PROGRESO",
+                resultado.estado()
+        );
     }
 
     @Test
@@ -229,5 +274,221 @@ class TareaServiceTest {
 
         verify(tareaRepository, never())
                 .save(any(Tarea.class));
+    }
+
+    // =====================================
+    // NUEVAS PRUEBAS DE RESPONSABLES
+    // =====================================
+
+    @Test
+    void debeCrearTareaConResponsableActivo() {
+
+        Responsable responsable =
+                crearResponsable(5L, true);
+
+        when(proyectoRepository.findById(1L))
+                .thenReturn(Optional.of(crearProyecto()));
+
+        when(responsableRepository.findById(5L))
+                .thenReturn(Optional.of(responsable));
+
+        when(tareaRepository.save(any(Tarea.class)))
+                .thenAnswer(invocacion -> {
+
+                    Tarea guardada =
+                            invocacion.getArgument(0);
+
+                    guardada.setId(2L);
+
+                    return guardada;
+                });
+
+        TareaRequest solicitud = new TareaRequest(
+                "Preparar informe",
+                "Informe mensual",
+                "PENDIENTE",
+                "ALTA",
+                LocalDate.of(2026, 12, 10),
+                1L,
+                5L
+        );
+
+        TareaResponse resultado =
+                tareaService.crear(solicitud);
+
+        assertEquals(2L, resultado.id());
+        assertEquals(5L, resultado.responsableId());
+    }
+
+    @Test
+    void debeRechazarResponsableInexistente() {
+
+        when(proyectoRepository.findById(1L))
+                .thenReturn(Optional.of(crearProyecto()));
+
+        when(responsableRepository.findById(99L))
+                .thenReturn(Optional.empty());
+
+        TareaRequest solicitud = new TareaRequest(
+                "Preparar informe",
+                "",
+                "PENDIENTE",
+                "MEDIA",
+                null,
+                1L,
+                99L
+        );
+
+        ResponseStatusException excepcion =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> tareaService.crear(solicitud)
+                );
+
+        assertEquals(
+                404,
+                excepcion.getStatusCode().value()
+        );
+
+        verify(tareaRepository, never())
+                .save(any(Tarea.class));
+    }
+
+    @Test
+    void debeRechazarResponsableInactivo() {
+
+        Responsable responsable =
+                crearResponsable(5L, false);
+
+        when(proyectoRepository.findById(1L))
+                .thenReturn(Optional.of(crearProyecto()));
+
+        when(responsableRepository.findById(5L))
+                .thenReturn(Optional.of(responsable));
+
+        TareaRequest solicitud = new TareaRequest(
+                "Preparar informe",
+                "",
+                "PENDIENTE",
+                "MEDIA",
+                null,
+                1L,
+                5L
+        );
+
+        ResponseStatusException excepcion =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> tareaService.crear(solicitud)
+                );
+
+        assertEquals(
+                400,
+                excepcion.getStatusCode().value()
+        );
+
+        verify(tareaRepository, never())
+                .save(any(Tarea.class));
+    }
+
+    @Test
+    void debeConservarResponsableAlCambiarEstado() {
+
+        asignarProyecto(tarea);
+
+        Responsable responsable =
+                crearResponsable(5L, true);
+
+        tarea.setResponsable(responsable);
+
+        when(tareaRepository.findById(1L))
+                .thenReturn(Optional.of(tarea));
+
+        when(proyectoRepository.findById(1L))
+                .thenReturn(Optional.of(crearProyecto()));
+
+        when(tareaRepository.save(any(Tarea.class)))
+                .thenAnswer(invocacion ->
+                        invocacion.getArgument(0)
+                );
+
+        // Simula una actualización del Kanban:
+        // el frontend anterior no envía responsableId.
+        TareaRequest solicitud = new TareaRequest(
+                "Diseñar interfaz",
+                "Crear pantalla",
+                "EN_PROGRESO",
+                "ALTA",
+                LocalDate.of(2026, 11, 30),
+                1L
+        );
+
+        TareaResponse resultado =
+                tareaService.actualizar(
+                        1L,
+                        solicitud
+                );
+
+        assertEquals(
+                "EN_PROGRESO",
+                resultado.estado()
+        );
+
+        assertEquals(
+                5L,
+                resultado.responsableId()
+        );
+
+        verify(responsableRepository, never())
+                .findById(any());
+    }
+
+    @Test
+    void debeCambiarResponsableDeTarea() {
+
+        asignarProyecto(tarea);
+
+        Responsable responsableAnterior =
+                crearResponsable(5L, true);
+
+        Responsable responsableNuevo =
+                crearResponsable(8L, true);
+
+        tarea.setResponsable(responsableAnterior);
+
+        when(tareaRepository.findById(1L))
+                .thenReturn(Optional.of(tarea));
+
+        when(proyectoRepository.findById(1L))
+                .thenReturn(Optional.of(crearProyecto()));
+
+        when(responsableRepository.findById(8L))
+                .thenReturn(Optional.of(responsableNuevo));
+
+        when(tareaRepository.save(any(Tarea.class)))
+                .thenAnswer(invocacion ->
+                        invocacion.getArgument(0)
+                );
+
+        TareaRequest solicitud = new TareaRequest(
+                "Diseñar interfaz",
+                "Crear pantalla",
+                "PENDIENTE",
+                "ALTA",
+                LocalDate.of(2026, 11, 30),
+                1L,
+                8L
+        );
+
+        TareaResponse resultado =
+                tareaService.actualizar(
+                        1L,
+                        solicitud
+                );
+
+        assertEquals(
+                8L,
+                resultado.responsableId()
+        );
     }
 }

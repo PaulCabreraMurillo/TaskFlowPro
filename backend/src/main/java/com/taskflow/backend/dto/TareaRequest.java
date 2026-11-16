@@ -25,6 +25,29 @@ public record TareaRequest(
     LocalDate fechaVencimiento,
 
     @NotNull(message = "El proyecto es obligatorio")
-    Long proyectoId
+    Long proyectoId,
 
-) {}
+    Long responsableId
+
+) {
+    // Mantiene la compatibilidad con las pruebas Java
+    // que utilizan el constructor anterior.
+    public TareaRequest(
+            String titulo,
+            String descripcion,
+            String estado,
+            String prioridad,
+            LocalDate fechaVencimiento,
+            Long proyectoId) {
+
+        this(
+            titulo,
+            descripcion,
+            estado,
+            prioridad,
+            fechaVencimiento,
+            proyectoId,
+            null
+        );
+    }
+}

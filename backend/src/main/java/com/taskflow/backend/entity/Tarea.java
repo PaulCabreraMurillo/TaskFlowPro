@@ -6,9 +6,28 @@ import com.taskflow.backend.model.Proyecto;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+
+
 @Entity
 @Table(name = "tareas")
 public class Tarea {
+
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "responsable_id")
+private Responsable responsable;
+
+public Responsable getResponsable() {
+    return responsable;
+}
+
+public void setResponsable(Responsable responsable) {
+    this.responsable = responsable;
+}
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
