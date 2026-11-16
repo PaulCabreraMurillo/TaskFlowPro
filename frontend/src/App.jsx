@@ -8,9 +8,19 @@ import {
   eliminarProyecto
 } from './services/proyectoService';
 
+import {
+  obtenerTareasPorProyecto,
+  crearTarea,
+  actualizarTarea,
+  eliminarTarea
+} from './services/tareaService';
+
 import ProyectoFormulario from './components/ProyectoFormulario';
 import ProyectoFiltros from './components/ProyectoFiltros';
 import ProyectoTarjeta from './components/ProyectoTarjeta';
+
+import TareaFormulario from './components/TareaFormulario';
+import TareaLista from './components/TareaLista';
 
 import './App.css';
 
@@ -18,6 +28,14 @@ const formularioInicial = {
   nombre: '',
   descripcion: '',
   estado: 'ACTIVO'
+};
+
+const tareaInicial = {
+  titulo: '',
+  descripcion: '',
+  estado: 'PENDIENTE',
+  prioridad: 'MEDIA',
+  fechaVencimiento: ''
 };
 
 function App() {
@@ -34,6 +52,29 @@ function App() {
   const [guardando, setGuardando] = useState(false);
   const [eliminandoId, setEliminandoId] = useState(null);
 
+  // Estados del módulo de tareas
+  const [proyectoSeleccionadoId, setProyectoSeleccionadoId] =
+    useState(null);
+
+  const [tareas, setTareas] = useState([]);
+  const [cargandoTareas, setCargandoTareas] = useState(false);
+  const [errorTareas, setErrorTareas] = useState('');
+  const [mensajeTareas, setMensajeTareas] = useState('');
+
+  const [formularioTarea, setFormularioTarea] =
+    useState({ ...tareaInicial });
+
+  const [editandoTareaId, setEditandoTareaId] = useState(null);
+  const [guardandoTarea, setGuardandoTarea] = useState(false);
+  const [eliminandoTareaId, setEliminandoTareaId] =
+    useState(null);
+
+  const [filtroEstadoTarea, setFiltroEstadoTarea] =
+    useState('TODOS');
+
+  const [filtroPrioridadTarea, setFiltroPrioridadTarea] =
+    useState('TODAS');
+
   useEffect(() => {
     async function cargarProyectos() {
       try {
@@ -48,6 +89,47 @@ function App() {
 
     cargarProyectos();
   }, []);
+
+  // Cargar tareas cuando cambia el proyecto seleccionado
+  useEffect(() => {
+    if (proyectoSeleccionadoId === null) {
+      setTareas([]);
+      setCargandoTareas(false);
+      return;
+    }
+
+    let activo = true;
+
+    async function cargarTareas() {
+      setCargandoTareas(true);
+      setErrorTareas('');
+      setTareas([]);
+
+      try {
+        const datos = await obtenerTareasPorProyecto(
+          proyectoSeleccionadoId
+        );
+
+        if (activo) {
+          setTareas(datos);
+        }
+      } catch (err) {
+        if (activo) {
+          setErrorTareas(err.message);
+        }
+      } finally {
+        if (activo) {
+          setCargandoTareas(false);
+        }
+      }
+    }
+
+    cargarTareas();
+
+    return () => {
+      activo = false;
+    };
+  }, [proyectoSeleccionadoId]);
 
   function manejarCambio(evento) {
     const { name, value } = evento.target;
@@ -161,11 +243,152 @@ function App() {
         setFormulario({ ...formularioInicial });
       }
 
+      if (proyectoSeleccionadoId === proyecto.id) {
+        setProyectoSeleccionadoId(null);
+        setTareas([]);
+        setFormularioTarea({ ...tareaInicial });
+        setEditandoTareaId(null);
+      }
+
       setMensaje('Proyecto eliminado correctamente.');
     } catch (err) {
       setError(err.message);
     } finally {
       setEliminandoId(null);
+    }
+  }
+
+  // Seleccionar proyecto para administrar sus tareas
+  function seleccionarProyecto(id) {
+    setProyectoSeleccionadoId(id);
+    setFormularioTarea({ ...tareaInicial });
+    setEditandoTareaId(null);
+    setErrorTareas('');
+    setMensajeTareas('');
+    setFiltroEstadoTarea('TODOS');
+    setFiltroPrioridadTarea('TODAS');
+  }
+
+  function manejarCambioTarea(evento) {
+    const { name, value } = evento.target;
+
+    setFormularioTarea((anterior) => ({
+      ...anterior,
+      [name]: value
+    }));
+  }
+
+  function iniciarEdicionTarea(tarea) {
+    setEditandoTareaId(tarea.id);
+
+    setFormularioTarea({
+      titulo: tarea.titulo,
+      descripcion: tarea.descripcion || '',
+      estado: tarea.estado,
+      prioridad: tarea.prioridad,
+      fechaVencimiento: tarea.fechaVencimiento || ''
+    });
+
+    setErrorTareas('');
+    setMensajeTareas('');
+  }
+
+  function cancelarEdicionTarea() {
+    setEditandoTareaId(null);
+    setFormularioTarea({ ...tareaInicial });
+    setErrorTareas('');
+    setMensajeTareas('');
+  }
+
+  async function manejarSubmitTarea(evento) {
+    evento.preventDefault();
+
+    if (proyectoSeleccionadoId === null) return;
+
+    setErrorTareas('');
+    setMensajeTareas('');
+
+    if (!formularioTarea.titulo.trim()) {
+      setErrorTareas('El título de la tarea es obligatorio.');
+      return;
+    }
+
+    setGuardandoTarea(true);
+
+    try {
+      const datos = {
+        titulo: formularioTarea.titulo.trim(),
+        descripcion: formularioTarea.descripcion.trim(),
+        estado: formularioTarea.estado,
+        prioridad: formularioTarea.prioridad,
+        fechaVencimiento:
+          formularioTarea.fechaVencimiento || null,
+        proyectoId: proyectoSeleccionadoId
+      };
+
+      if (editandoTareaId !== null) {
+        const actualizada = await actualizarTarea(
+          editandoTareaId,
+          datos
+        );
+
+        setTareas((anteriores) =>
+          anteriores.map((tarea) =>
+            tarea.id === editandoTareaId
+              ? actualizada
+              : tarea
+          )
+        );
+
+        setMensajeTareas('Tarea actualizada correctamente.');
+      } else {
+        const nueva = await crearTarea(datos);
+
+        setTareas((anteriores) => [
+          ...anteriores,
+          nueva
+        ]);
+
+        setMensajeTareas('Tarea creada correctamente.');
+      }
+
+      setFormularioTarea({ ...tareaInicial });
+      setEditandoTareaId(null);
+    } catch (err) {
+      setErrorTareas(err.message);
+    } finally {
+      setGuardandoTarea(false);
+    }
+  }
+
+  async function manejarEliminarTarea(tarea) {
+    const confirmado = window.confirm(
+      `¿Seguro que deseas eliminar la tarea "${tarea.titulo}"?`
+    );
+
+    if (!confirmado) return;
+
+    setErrorTareas('');
+    setMensajeTareas('');
+    setEliminandoTareaId(tarea.id);
+
+    try {
+      await eliminarTarea(tarea.id);
+
+      setTareas((anteriores) =>
+        anteriores.filter((item) => item.id !== tarea.id)
+      );
+
+      if (editandoTareaId === tarea.id) {
+        setEditandoTareaId(null);
+        setFormularioTarea({ ...tareaInicial });
+      }
+
+      setMensajeTareas('Tarea eliminada correctamente.');
+    } catch (err) {
+      setErrorTareas(err.message);
+    } finally {
+      setEliminandoTareaId(null);
     }
   }
 
@@ -182,6 +405,10 @@ function App() {
 
     return coincideBusqueda && coincideEstado;
   });
+
+  const proyectoSeleccionado = proyectos.find(
+    (proyecto) => proyecto.id === proyectoSeleccionadoId
+  );
 
   return (
     <div className="app">
@@ -244,18 +471,89 @@ function App() {
           {!cargando && proyectosFiltrados.length > 0 && (
             <div className="proyectos">
               {proyectosFiltrados.map((proyecto) => (
-                <ProyectoTarjeta
-                  key={proyecto.id}
-                  proyecto={proyecto}
-                  iniciarEdicion={iniciarEdicion}
-                  manejarEliminar={manejarEliminar}
-                  guardando={guardando}
-                  eliminandoId={eliminandoId}
-                />
+                <div key={proyecto.id}>
+                  <ProyectoTarjeta
+                    proyecto={proyecto}
+                    iniciarEdicion={iniciarEdicion}
+                    manejarEliminar={manejarEliminar}
+                    guardando={guardando}
+                    eliminandoId={eliminandoId}
+                  />
+
+                  <button
+                    type="button"
+                    className="boton-tareas"
+                    onClick={() =>
+                      seleccionarProyecto(proyecto.id)
+                    }
+                  >
+                    Ver tareas
+                  </button>
+                </div>
               ))}
             </div>
           )}
         </section>
+
+        {proyectoSeleccionado && (
+          <section className="modulo-tareas">
+            <div className="modulo-tareas-encabezado">
+              <div>
+                <h2>
+                  Tareas de: {proyectoSeleccionado.nombre}
+                </h2>
+                <p>
+                  Administra las tareas de este proyecto.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="boton-cerrar-tareas"
+                onClick={() => seleccionarProyecto(null)}
+              >
+                Cerrar
+              </button>
+            </div>
+
+            {mensajeTareas && (
+              <p className="mensaje-exito" role="status">
+                {mensajeTareas}
+              </p>
+            )}
+
+            {errorTareas && (
+              <p className="mensaje-error" role="alert">
+                Error: {errorTareas}
+              </p>
+            )}
+
+            <TareaFormulario
+              formulario={formularioTarea}
+              editandoId={editandoTareaId}
+              guardando={guardandoTarea}
+              manejarCambio={manejarCambioTarea}
+              manejarSubmit={manejarSubmitTarea}
+              cancelarEdicion={cancelarEdicionTarea}
+            />
+
+            {cargandoTareas ? (
+              <p>Cargando tareas...</p>
+            ) : !errorTareas ? (
+              <TareaLista
+                tareas={tareas}
+                filtroEstado={filtroEstadoTarea}
+                setFiltroEstado={setFiltroEstadoTarea}
+                filtroPrioridad={filtroPrioridadTarea}
+                setFiltroPrioridad={setFiltroPrioridadTarea}
+                iniciarEdicion={iniciarEdicionTarea}
+                manejarEliminar={manejarEliminarTarea}
+                eliminandoId={eliminandoTareaId}
+                guardando={guardandoTarea}
+              />
+            ) : null}
+          </section>
+        )}
       </main>
     </div>
   );
