@@ -638,3 +638,174 @@ body {
     width: 100%;
   }
 }
+
+
+/* ==========================================
+   ETAPA 34 - TABLERO KANBAN
+   ========================================== */
+
+.selector-vista-tablero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 24px 0;
+  flex-wrap: wrap;
+}
+
+.selector-vista-tablero strong {
+  font-size: 16px;
+  color: #1e293b;
+}
+
+.selector-vista-tablero p {
+  color: #64748b;
+  font-size: 14px;
+  margin: 6px 0 0;
+}
+
+.botones-vista-tablero {
+  display: flex;
+  gap: 8px;
+}
+
+.botones-vista-tablero button {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.botones-vista-tablero button.activo {
+  background: #1e3a8a;
+  color: #ffffff;
+  border-color: #1e3a8a;
+}
+
+/* Contenedor de las tres columnas */
+
+.kanban-tablero {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+/* Columnas */
+
+.kanban-columna {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.kanban-encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.kanban-encabezado h3 {
+  font-size: 16px;
+  margin: 0;
+  color: #1e293b;
+}
+
+.kanban-contador {
+  background: #ffffff;
+  color: #334155;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.kanban-PENDIENTE .kanban-encabezado {
+  border-top: 4px solid #64748b;
+}
+
+.kanban-EN_PROGRESO .kanban-encabezado {
+  border-top: 4px solid #2563eb;
+}
+
+.kanban-FINALIZADA .kanban-encabezado {
+  border-top: 4px solid #16a34a;
+}
+
+/* Contenido de las columnas */
+
+.kanban-contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+}
+
+.kanban-contenido .tarjeta-tablero {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.kanban-contenido .tarjeta-tablero h3 {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.kanban-contenido .tarjeta-tablero p {
+  overflow-wrap: anywhere;
+}
+
+.kanban-contenido .tarea-detalles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kanban-contenido .acciones-tarjeta {
+  margin-top: 14px;
+}
+
+.kanban-vacio {
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+  padding: 18px 8px;
+}
+
+/* Pantallas medianas */
+
+@media (max-width: 1050px) {
+  .kanban-tablero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Celulares */
+
+@media (max-width: 650px) {
+  .kanban-tablero {
+    grid-template-columns: 1fr;
+  }
+
+  .selector-vista-tablero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .botones-vista-tablero {
+    width: 100%;
+  }
+
+  .botones-vista-tablero button {
+    flex: 1;
+  }
+}

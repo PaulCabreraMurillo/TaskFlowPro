@@ -8,6 +8,104 @@ import {
   formatearFecha
 } from '../utils/vencimientoUtils';
 
+const NOMBRES_ESTADO = {
+  PENDIENTE: 'Pendiente',
+  EN_PROGRESO: 'En progreso',
+  FINALIZADA: 'Finalizada'
+};
+
+const VALOR_PRIORIDAD = {
+  ALTA: 3,
+  MEDIA: 2,
+  BAJA: 1
+};
+
+const COLUMNAS_KANBAN = [
+  {
+    codigo: 'PENDIENTE',
+    titulo: 'Pendientes'
+  },
+  {
+    codigo: 'EN_PROGRESO',
+    titulo: 'En progreso'
+  },
+  {
+    codigo: 'FINALIZADA',
+    titulo: 'Finalizadas'
+  }
+];
+
+function TarjetaTablero({
+  tarea,
+  nombreProyecto,
+  abrirTarea,
+  cargando
+}) {
+  const alerta = obtenerEstadoVencimiento(tarea);
+
+  return (
+    <article
+      className={
+        `tarjeta tarjeta-tablero ` +
+        `tarjeta-vencimiento-${alerta.codigo}`
+      }
+    >
+      <div className="tarjeta-tablero-encabezado">
+        <h3>{tarea.titulo}</h3>
+
+        <span
+          className={
+            `alerta-vencimiento alerta-${alerta.codigo}`
+          }
+        >
+          {alerta.texto}
+        </span>
+      </div>
+
+      <p className="nombre-proyecto-tarea">
+        Proyecto: {nombreProyecto}
+      </p>
+
+      <p>
+        {tarea.descripcion || 'Sin descripción'}
+      </p>
+
+      <div className="tarea-detalles">
+        <span className={`estado ${tarea.estado}`}>
+          {NOMBRES_ESTADO[tarea.estado] || tarea.estado}
+        </span>
+
+        <span
+          className={
+            `prioridad prioridad-${tarea.prioridad}`
+          }
+        >
+          Prioridad: {tarea.prioridad}
+        </span>
+
+        <span>
+          Fecha límite:{' '}
+          {formatearFecha(tarea.fechaVencimiento)}
+        </span>
+      </div>
+
+      <div className="acciones-tarjeta">
+        <button
+          type="button"
+          className="boton-tareas"
+          onClick={() => abrirTarea(tarea)}
+          disabled={
+            cargando ||
+            typeof abrirTarea !== 'function'
+          }
+        >
+          Abrir tarea
+        </button>
+      </div>
+    </article>
+  );
+}
+
 function TableroGeneral({
   proyectos,
   tareas,
@@ -21,8 +119,10 @@ function TableroGeneral({
   const [estado, setEstado] = useState('TODOS');
   const [prioridad, setPrioridad] = useState('TODAS');
   const [vencimiento, setVencimiento] = useState('TODOS');
-
   const [ordenamiento, setOrdenamiento] = useState('FECHA');
+
+  // Nueva opción de visualización.
+  const [vistaTablero, setVistaTablero] = useState('LISTA');
 
   const nombresProyectos = new Map(
     proyectos.map((proyecto) => [
@@ -38,11 +138,15 @@ function TableroGeneral({
     const texto = busqueda.trim().toLowerCase();
 
     const coincideBusqueda =
-      (tarea.titulo || '').toLowerCase().includes(texto) ||
+      (tarea.titulo || '')
+        .toLowerCase()
+        .includes(texto) ||
       (tarea.descripcion || '')
         .toLowerCase()
         .includes(texto) ||
-      nombreProyecto.toLowerCase().includes(texto);
+      nombreProyecto
+        .toLowerCase()
+        .includes(texto);
 
     const coincideProyecto =
       proyectoId === 'TODOS' ||
@@ -58,7 +162,8 @@ function TableroGeneral({
 
     const coincideVencimiento =
       vencimiento === 'TODOS' ||
-      obtenerEstadoVencimiento(tarea).codigo === vencimiento;
+      obtenerEstadoVencimiento(tarea).codigo ===
+        vencimiento;
 
     return (
       coincideBusqueda &&
@@ -69,52 +174,46 @@ function TableroGeneral({
     );
   });
 
-  const valorPrioridad = {
-    ALTA: 3,
-    MEDIA: 2,
-    BAJA: 1
-  };
+  const tareasOrdenadas = [...tareasFiltradas].sort(
+    (a, b) => {
+      if (ordenamiento === 'PRIORIDAD') {
+        const diferencia =
+          (VALOR_PRIORIDAD[b.prioridad] || 0) -
+          (VALOR_PRIORIDAD[a.prioridad] || 0);
 
-  const tareasOrdenadas = [...tareasFiltradas].sort((a, b) => {
-    if (ordenamiento === 'PRIORIDAD') {
-      const diferencia =
-        (valorPrioridad[b.prioridad] || 0) -
-        (valorPrioridad[a.prioridad] || 0);
+        if (diferencia !== 0) {
+          return diferencia;
+        }
+      }
 
-      if (diferencia !== 0) return diferencia;
-    }
+      if (ordenamiento === 'FECHA') {
+        if (!a.fechaVencimiento && b.fechaVencimiento) {
+          return 1;
+        }
 
-    if (ordenamiento === 'TITULO') {
+        if (a.fechaVencimiento && !b.fechaVencimiento) {
+          return -1;
+        }
+
+        if (a.fechaVencimiento && b.fechaVencimiento) {
+          const diferencia =
+            a.fechaVencimiento.localeCompare(
+              b.fechaVencimiento
+            );
+
+          if (diferencia !== 0) {
+            return diferencia;
+          }
+        }
+      }
+
       return (a.titulo || '').localeCompare(
         b.titulo || '',
         'es',
         { sensitivity: 'base' }
       );
     }
-
-    if (ordenamiento === 'FECHA') {
-      // Las tareas sin fecha quedan al final.
-      if (!a.fechaVencimiento && !b.fechaVencimiento) {
-        return 0;
-      }
-
-      if (!a.fechaVencimiento) return 1;
-      if (!b.fechaVencimiento) return -1;
-
-      const diferencia = a.fechaVencimiento.localeCompare(
-        b.fechaVencimiento
-      );
-
-      if (diferencia !== 0) return diferencia;
-    }
-
-    // Orden secundario alfabético.
-    return (a.titulo || '').localeCompare(
-      b.titulo || '',
-      'es',
-      { sensitivity: 'base' }
-    );
-  });
+  );
 
   function limpiarFiltros() {
     setBusqueda('');
@@ -125,14 +224,30 @@ function TableroGeneral({
     setOrdenamiento('FECHA');
   }
 
+  function renderizarTarjeta(tarea) {
+    const nombreProyecto =
+      nombresProyectos.get(tarea.proyectoId) ||
+      'Proyecto no encontrado';
+
+    return (
+      <TarjetaTablero
+        key={tarea.id}
+        tarea={tarea}
+        nombreProyecto={nombreProyecto}
+        abrirTarea={abrirTarea}
+        cargando={cargando}
+      />
+    );
+  }
+
   return (
     <section className="tablero-general">
       <div className="tablero-encabezado">
         <div>
           <h2>Panel general</h2>
           <p>
-            Consulta, filtra y organiza las tareas de
-            todos tus proyectos.
+            Consulta y organiza las tareas de todos
+            tus proyectos.
           </p>
         </div>
 
@@ -236,18 +351,12 @@ function TableroGeneral({
               <option value="TODOS">
                 Todos los vencimientos
               </option>
-              <option value="VENCIDA">
-                Vencidas
-              </option>
+              <option value="VENCIDA">Vencidas</option>
               <option value="PROXIMA">
                 Próximas a vencer
               </option>
-              <option value="AL_DIA">
-                Al día
-              </option>
-              <option value="SIN_FECHA">
-                Sin fecha
-              </option>
+              <option value="AL_DIA">Al día</option>
+              <option value="SIN_FECHA">Sin fecha</option>
               <option value="FINALIZADA">
                 Finalizadas
               </option>
@@ -280,101 +389,92 @@ function TableroGeneral({
             </button>
           </div>
 
-          <p className="contador-proyectos">
-            Mostrando {tareasOrdenadas.length} de{' '}
-            {tareas.length} tareas.
-          </p>
+          {/* Selector de vista */}
+          <div className="selector-vista-tablero">
+            <div>
+              <strong>Visualización de tareas</strong>
+              <p>
+                Mostrando {tareasOrdenadas.length} de{' '}
+                {tareas.length} tareas.
+              </p>
+            </div>
 
-          {tareasOrdenadas.length === 0 ? (
-            <p className="sin-resultados">
-              No se encontraron tareas con los filtros
-              seleccionados.
-            </p>
+            <div
+              className="botones-vista-tablero"
+              role="group"
+              aria-label="Seleccionar vista del tablero"
+            >
+              <button
+                type="button"
+                className={
+                  vistaTablero === 'LISTA' ? 'activo' : ''
+                }
+                aria-pressed={vistaTablero === 'LISTA'}
+                onClick={() => setVistaTablero('LISTA')}
+              >
+                Lista
+              </button>
+
+              <button
+                type="button"
+                className={
+                  vistaTablero === 'KANBAN' ? 'activo' : ''
+                }
+                aria-pressed={vistaTablero === 'KANBAN'}
+                onClick={() => setVistaTablero('KANBAN')}
+              >
+                Kanban
+              </button>
+            </div>
+          </div>
+
+          {vistaTablero === 'LISTA' ? (
+            tareasOrdenadas.length === 0 ? (
+              <p className="sin-resultados">
+                No se encontraron tareas con los filtros
+                seleccionados.
+              </p>
+            ) : (
+              <div className="proyectos">
+                {tareasOrdenadas.map(renderizarTarjeta)}
+              </div>
+            )
           ) : (
-            <div className="proyectos">
-              {tareasOrdenadas.map((tarea) => {
-                const alerta =
-                  obtenerEstadoVencimiento(tarea);
-
-                const nombreProyecto =
-                  nombresProyectos.get(tarea.proyectoId) ||
-                  'Proyecto no encontrado';
-
-                const nombreEstado =
-                  tarea.estado === 'EN_PROGRESO'
-                    ? 'En progreso'
-                    : tarea.estado === 'FINALIZADA'
-                      ? 'Finalizada'
-                      : 'Pendiente';
+            <div className="kanban-tablero">
+              {COLUMNAS_KANBAN.map((columna) => {
+                const tareasColumna =
+                  tareasOrdenadas.filter(
+                    (tarea) =>
+                      tarea.estado === columna.codigo
+                  );
 
                 return (
-                  <article
-                    key={tarea.id}
+                  <section
                     className={
-                      `tarjeta tarjeta-tablero ` +
-                      `tarjeta-vencimiento-${alerta.codigo}`
+                      `kanban-columna ` +
+                      `kanban-${columna.codigo}`
                     }
+                    key={columna.codigo}
                   >
-                    <div className="tarjeta-tablero-encabezado">
-                      <h3>{tarea.titulo}</h3>
-
-                      <span
-                        className={
-                          `alerta-vencimiento ` +
-                          `alerta-${alerta.codigo}`
-                        }
-                      >
-                        {alerta.texto}
+                    <div className="kanban-encabezado">
+                      <h3>{columna.titulo}</h3>
+                      <span className="kanban-contador">
+                        {tareasColumna.length}
                       </span>
                     </div>
 
-                    <p className="nombre-proyecto-tarea">
-                      Proyecto: {nombreProyecto}
-                    </p>
-
-                    <p>
-                      {tarea.descripcion ||
-                        'Sin descripción'}
-                    </p>
-
-                    <div className="tarea-detalles">
-                      <span
-                        className={`estado ${tarea.estado}`}
-                      >
-                        {nombreEstado}
-                      </span>
-
-                      <span
-                        className={
-                          `prioridad ` +
-                          `prioridad-${tarea.prioridad}`
-                        }
-                      >
-                        Prioridad: {tarea.prioridad}
-                      </span>
-
-                      <span>
-                        Fecha límite:{' '}
-                        {formatearFecha(
-                          tarea.fechaVencimiento
-                        )}
-                      </span>
+                    <div className="kanban-contenido">
+                      {tareasColumna.length === 0 ? (
+                        <p className="kanban-vacio">
+                          No hay tareas en este estado.
+                        </p>
+                      ) : (
+                        tareasColumna.map(
+                          renderizarTarjeta
+                        )
+                      )}
                     </div>
-
-                    <div className="acciones-tarjeta">
-                      <button
-                        type="button"
-                        className="boton-tareas"
-                        onClick={() => abrirTarea(tarea)}
-                        disabled={
-                          cargando ||
-                          typeof abrirTarea !== 'function'
-                        }
-                      >
-                        Abrir tarea
-                      </button>
-                    </div>
-                  </article>
+                  </section>
                 );
               })}
             </div>
