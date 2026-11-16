@@ -11,8 +11,30 @@ function TareaFormulario({
   guardando,
   manejarCambio,
   manejarSubmit,
-  cancelarEdicion
+  cancelarEdicion,
+  responsables = [],
+  cargandoResponsables = false,
+  errorResponsables = ''
 }) {
+  const responsableSeleccionadoId =
+    formulario.responsableId === null ||
+    formulario.responsableId === undefined
+      ? ''
+      : String(formulario.responsableId);
+
+  const responsableSeleccionado = responsables.find(
+    (responsable) =>
+      String(responsable.id) === responsableSeleccionadoId
+  );
+
+  const responsablesActivos = responsables.filter(
+    (responsable) => responsable.activo === true
+  );
+
+  const responsableInactivoSeleccionado =
+    responsableSeleccionado &&
+    responsableSeleccionado.activo !== true;
+
   return (
     <section className="formulario-seccion">
       <h3>
@@ -31,6 +53,7 @@ function TareaFormulario({
             onChange={manejarCambio}
             maxLength={150}
             required
+            disabled={guardando}
           />
         </div>
 
@@ -45,6 +68,7 @@ function TareaFormulario({
             onChange={manejarCambio}
             maxLength={1000}
             rows={3}
+            disabled={guardando}
           />
         </div>
 
@@ -55,6 +79,7 @@ function TareaFormulario({
             name="estado"
             value={formulario.estado}
             onChange={manejarCambio}
+            disabled={guardando}
           >
             {estados.map((estado) => (
               <option
@@ -76,6 +101,7 @@ function TareaFormulario({
             name="prioridad"
             value={formulario.prioridad}
             onChange={manejarCambio}
+            disabled={guardando}
           >
             <option value="BAJA">Baja</option>
             <option value="MEDIA">Media</option>
@@ -93,11 +119,84 @@ function TareaFormulario({
             name="fechaVencimiento"
             value={formulario.fechaVencimiento}
             onChange={manejarCambio}
+            disabled={guardando}
           />
         </div>
 
+        <div className="campo">
+          <label htmlFor="responsableTarea">
+            Responsable asignado
+          </label>
+
+          <select
+            id="responsableTarea"
+            name="responsableId"
+            value={responsableSeleccionadoId}
+            onChange={manejarCambio}
+            disabled={
+              guardando ||
+              cargandoResponsables ||
+              Boolean(errorResponsables)
+            }
+          >
+            {responsableSeleccionadoId === '' && (
+              <option value="">
+                Sin responsable asignado
+              </option>
+            )}
+
+            {responsableInactivoSeleccionado && (
+              <option
+                value={responsableSeleccionadoId}
+              >
+                {responsableSeleccionado.nombre}
+                {' (inactivo - asignación existente)'}
+              </option>
+            )}
+
+            {responsablesActivos.map((responsable) => (
+              <option
+                key={responsable.id}
+                value={String(responsable.id)}
+              >
+                {responsable.nombre}
+              </option>
+            ))}
+          </select>
+
+          {cargandoResponsables && (
+            <small>Cargando responsables...</small>
+          )}
+
+          {errorResponsables && (
+            <small role="alert">
+              Error al cargar responsables:
+              {' '}{errorResponsables}
+            </small>
+          )}
+
+          {!cargandoResponsables &&
+            !errorResponsables &&
+            responsablesActivos.length === 0 && (
+              <small>
+                No hay responsables activos disponibles.
+              </small>
+            )}
+
+          {responsableInactivoSeleccionado && (
+            <small>
+              Este responsable está inactivo.
+              Puedes conservar la asignación actual
+              o seleccionar otro responsable activo.
+            </small>
+          )}
+        </div>
+
         <div className="acciones-formulario">
-          <button type="submit" disabled={guardando}>
+          <button
+            type="submit"
+            disabled={guardando}
+          >
             {guardando
               ? 'Guardando...'
               : editandoId !== null

@@ -29,6 +29,7 @@ import './App.css';
 
 import TableroGeneral from './components/TableroGeneral';
 import ResponsablesPanel from './components/ResponsablesPanel';
+import { obtenerResponsables } from './services/responsableService';
 
 const formularioInicial = {
   nombre: '',
@@ -36,16 +37,26 @@ const formularioInicial = {
   estado: 'ACTIVO'
 };
 
+
 const tareaInicial = {
   titulo: '',
   descripcion: '',
   estado: 'PENDIENTE',
   prioridad: 'MEDIA',
-  fechaVencimiento: ''
+  fechaVencimiento: '',
+  responsableId: ''
 };
+
 
 function App() {
   const [vistaActual, setVistaActual] = useState('PROYECTOS');
+
+  const [responsables, setResponsables] = useState([]);
+  const [cargandoResponsables, setCargandoResponsables] =
+    useState(false);
+  const [errorResponsables, setErrorResponsables] =
+    useState('');
+
   const [tareaPendienteAbrir, setTareaPendienteAbrir] = useState(null);
 
   const [tareasGenerales, setTareasGenerales] = useState([]);
@@ -86,6 +97,40 @@ function App() {
 
   const [filtroPrioridadTarea, setFiltroPrioridadTarea] =
     useState('TODAS');
+
+
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarResponsables() {
+      setCargandoResponsables(true);
+      setErrorResponsables('');
+
+      try {
+        const datos = await obtenerResponsables();
+
+        if (activo) {
+          setResponsables(datos);
+        }
+      } catch (err) {
+        if (activo) {
+          setErrorResponsables(err.message);
+        }
+      } finally {
+        if (activo) {
+          setCargandoResponsables(false);
+        }
+      }
+    }
+
+    cargarResponsables();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  
 
   useEffect(() => {
     async function cargarProyectos() {
@@ -307,13 +352,19 @@ function App() {
     if (!tarea) return;
 
     setEditandoTareaId(tarea.id);
-    setFormularioTarea({
-      titulo: tarea.titulo,
-      descripcion: tarea.descripcion || '',
-      estado: tarea.estado,
-      prioridad: tarea.prioridad,
-      fechaVencimiento: tarea.fechaVencimiento || ''
-    });
+    
+setFormularioTarea({
+  titulo: tarea.titulo,
+  descripcion: tarea.descripcion || '',
+  estado: tarea.estado,
+  prioridad: tarea.prioridad,
+  fechaVencimiento: tarea.fechaVencimiento || '',
+  responsableId:
+    tarea.responsableId != null
+      ? String(tarea.responsableId)
+      : ''
+});
+
     setTareaPendienteAbrir(null);
 
     // La sección de tareas está debajo del listado de proyectos.
@@ -336,13 +387,19 @@ function App() {
   function iniciarEdicionTarea(tarea) {
     setEditandoTareaId(tarea.id);
 
-    setFormularioTarea({
-      titulo: tarea.titulo,
-      descripcion: tarea.descripcion || '',
-      estado: tarea.estado,
-      prioridad: tarea.prioridad,
-      fechaVencimiento: tarea.fechaVencimiento || ''
-    });
+    
+setFormularioTarea({
+  titulo: tarea.titulo,
+  descripcion: tarea.descripcion || '',
+  estado: tarea.estado,
+  prioridad: tarea.prioridad,
+  fechaVencimiento: tarea.fechaVencimiento || '',
+  responsableId:
+    tarea.responsableId != null
+      ? String(tarea.responsableId)
+      : ''
+});
+
 
     setErrorTareas('');
     setMensajeTareas('');
@@ -371,15 +428,23 @@ function App() {
     setGuardandoTarea(true);
 
     try {
-      const datos = {
-        titulo: formularioTarea.titulo.trim(),
-        descripcion: formularioTarea.descripcion.trim(),
-        estado: formularioTarea.estado,
-        prioridad: formularioTarea.prioridad,
-        fechaVencimiento:
-          formularioTarea.fechaVencimiento || null,
-        proyectoId: proyectoSeleccionadoId
-      };
+      
+const datos = {
+  titulo: formularioTarea.titulo.trim(),
+  descripcion: formularioTarea.descripcion.trim(),
+  estado: formularioTarea.estado,
+  prioridad: formularioTarea.prioridad,
+  fechaVencimiento:
+    formularioTarea.fechaVencimiento || null,
+  proyectoId: proyectoSeleccionadoId
+};
+
+if (formularioTarea.responsableId !== '') {
+  datos.responsableId = Number(
+    formularioTarea.responsableId
+  );
+}
+
 
       if (editandoTareaId !== null) {
         const actualizada = await actualizarTarea(
@@ -491,7 +556,22 @@ function App() {
           <button
             type="button"
             className={vistaActual === 'PROYECTOS' ? 'activo' : ''}
-            onClick={() => setVistaActual('PROYECTOS')}
+            
+onClick={async () => {
+  setVistaActual('PROYECTOS');
+  setCargandoResponsables(true);
+  setErrorResponsables('');
+
+  try {
+    const datos = await obtenerResponsables();
+    setResponsables(datos);
+  } catch (err) {
+    setErrorResponsables(err.message);
+  } finally {
+    setCargandoResponsables(false);
+  }
+}}
+
           >
             Proyectos
           </button>
@@ -650,14 +730,19 @@ function App() {
               <TareaResumen tareas={tareas} />
             )}
 
-            <TareaFormulario
-              formulario={formularioTarea}
-              editandoId={editandoTareaId}
-              guardando={guardandoTarea}
-              manejarCambio={manejarCambioTarea}
-              manejarSubmit={manejarSubmitTarea}
-              cancelarEdicion={cancelarEdicionTarea}
-            />
+            
+<TareaFormulario
+  formulario={formularioTarea}
+  editandoId={editandoTareaId}
+  guardando={guardandoTarea}
+  manejarCambio={manejarCambioTarea}
+  manejarSubmit={manejarSubmitTarea}
+  cancelarEdicion={cancelarEdicionTarea}
+  responsables={responsables}
+  cargandoResponsables={cargandoResponsables}
+  errorResponsables={errorResponsables}
+/>
+
 
             {cargandoTareas ? (
               <p>Cargando tareas...</p>
