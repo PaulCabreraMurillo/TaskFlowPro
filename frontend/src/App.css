@@ -532,3 +532,109 @@ body {
     width: 100%;
   }
 }
+
+
+/* =========================================
+   ETAPA 33 - ORGANIZACIÓN DEL TABLERO
+   ========================================= */
+
+/* Tarjetas del panel general */
+
+.tarjeta-tablero {
+  border-left: 5px solid #cbd5e1;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.tarjeta-tablero:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Tareas vencidas */
+
+.tarjeta-vencimiento-VENCIDA {
+  border-left-color: #dc2626;
+}
+
+/* Tareas próximas a vencer */
+
+.tarjeta-vencimiento-PROXIMA {
+  border-left-color: #d97706;
+}
+
+/* Tareas al día */
+
+.tarjeta-vencimiento-AL_DIA {
+  border-left-color: #16a34a;
+}
+
+/* Tareas finalizadas */
+
+.tarjeta-vencimiento-FINALIZADA {
+  border-left-color: #2563eb;
+}
+
+/* Tareas sin fecha */
+
+.tarjeta-vencimiento-SIN_FECHA {
+  border-left-color: #94a3b8;
+}
+
+/* Encabezado de las tarjetas */
+
+.tarjeta-tablero-encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tarjeta-tablero-encabezado h3 {
+  margin: 0;
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Separación del botón Abrir tarea */
+
+.tarjeta-tablero .acciones-tarjeta {
+  margin-top: 18px;
+}
+
+/* Mejoras para filtros y ordenamiento */
+
+.filtros-tablero select,
+.filtros-tablero input {
+  background-color: #ffffff;
+}
+
+.filtros-tablero select:focus,
+.filtros-tablero input:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+/* Diseño adaptable */
+
+@media (max-width: 600px) {
+  .tarjeta-tablero-encabezado {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tarjeta-tablero-encabezado h3 {
+    min-width: 0;
+  }
+
+  .tarjeta-tablero .acciones-tarjeta {
+    width: 100%;
+  }
+
+  .tarjeta-tablero .boton-tareas {
+    width: 100%;
+  }
+}

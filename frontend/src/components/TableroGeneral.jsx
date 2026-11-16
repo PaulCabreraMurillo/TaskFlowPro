@@ -22,6 +22,8 @@ function TableroGeneral({
   const [prioridad, setPrioridad] = useState('TODAS');
   const [vencimiento, setVencimiento] = useState('TODOS');
 
+  const [ordenamiento, setOrdenamiento] = useState('FECHA');
+
   const nombresProyectos = new Map(
     proyectos.map((proyecto) => [
       proyecto.id,
@@ -67,12 +69,60 @@ function TableroGeneral({
     );
   });
 
+  const valorPrioridad = {
+    ALTA: 3,
+    MEDIA: 2,
+    BAJA: 1
+  };
+
+  const tareasOrdenadas = [...tareasFiltradas].sort((a, b) => {
+    if (ordenamiento === 'PRIORIDAD') {
+      const diferencia =
+        (valorPrioridad[b.prioridad] || 0) -
+        (valorPrioridad[a.prioridad] || 0);
+
+      if (diferencia !== 0) return diferencia;
+    }
+
+    if (ordenamiento === 'TITULO') {
+      return (a.titulo || '').localeCompare(
+        b.titulo || '',
+        'es',
+        { sensitivity: 'base' }
+      );
+    }
+
+    if (ordenamiento === 'FECHA') {
+      // Las tareas sin fecha quedan al final.
+      if (!a.fechaVencimiento && !b.fechaVencimiento) {
+        return 0;
+      }
+
+      if (!a.fechaVencimiento) return 1;
+      if (!b.fechaVencimiento) return -1;
+
+      const diferencia = a.fechaVencimiento.localeCompare(
+        b.fechaVencimiento
+      );
+
+      if (diferencia !== 0) return diferencia;
+    }
+
+    // Orden secundario alfabético.
+    return (a.titulo || '').localeCompare(
+      b.titulo || '',
+      'es',
+      { sensitivity: 'base' }
+    );
+  });
+
   function limpiarFiltros() {
     setBusqueda('');
     setProyectoId('TODOS');
     setEstado('TODOS');
     setPrioridad('TODAS');
     setVencimiento('TODOS');
+    setOrdenamiento('FECHA');
   }
 
   return (
@@ -81,7 +131,8 @@ function TableroGeneral({
         <div>
           <h2>Panel general</h2>
           <p>
-            Consulta las tareas de todos tus proyectos.
+            Consulta, filtra y organiza las tareas de
+            todos tus proyectos.
           </p>
         </div>
 
@@ -105,10 +156,8 @@ function TableroGeneral({
         <p>Cargando tablero...</p>
       ) : (
         <>
-          {/* Indicadores generales */}
           <TareaResumen tareas={tareas} />
 
-          {/* Filtros */}
           <div className="filtros-tablero">
             <input
               type="text"
@@ -172,15 +221,9 @@ function TableroGeneral({
               <option value="TODAS">
                 Todas las prioridades
               </option>
-              <option value="BAJA">
-                Baja
-              </option>
-              <option value="MEDIA">
-                Media
-              </option>
-              <option value="ALTA">
-                Alta
-              </option>
+              <option value="BAJA">Baja</option>
+              <option value="MEDIA">Media</option>
+              <option value="ALTA">Alta</option>
             </select>
 
             <select
@@ -210,6 +253,24 @@ function TableroGeneral({
               </option>
             </select>
 
+            <select
+              aria-label="Ordenar tareas"
+              value={ordenamiento}
+              onChange={(evento) =>
+                setOrdenamiento(evento.target.value)
+              }
+            >
+              <option value="FECHA">
+                Ordenar: fecha más próxima
+              </option>
+              <option value="PRIORIDAD">
+                Ordenar: prioridad alta primero
+              </option>
+              <option value="TITULO">
+                Ordenar: título A-Z
+              </option>
+            </select>
+
             <button
               type="button"
               className="boton-cancelar"
@@ -219,20 +280,19 @@ function TableroGeneral({
             </button>
           </div>
 
-          {/* Contador de resultados */}
           <p className="contador-proyectos">
-            Mostrando {tareasFiltradas.length} de{' '}
+            Mostrando {tareasOrdenadas.length} de{' '}
             {tareas.length} tareas.
           </p>
 
-          {/* Listado de tareas */}
-          {tareasFiltradas.length === 0 ? (
+          {tareasOrdenadas.length === 0 ? (
             <p className="sin-resultados">
-              No se encontraron tareas.
+              No se encontraron tareas con los filtros
+              seleccionados.
             </p>
           ) : (
             <div className="proyectos">
-              {tareasFiltradas.map((tarea) => {
+              {tareasOrdenadas.map((tarea) => {
                 const alerta =
                   obtenerEstadoVencimiento(tarea);
 
@@ -240,12 +300,33 @@ function TableroGeneral({
                   nombresProyectos.get(tarea.proyectoId) ||
                   'Proyecto no encontrado';
 
+                const nombreEstado =
+                  tarea.estado === 'EN_PROGRESO'
+                    ? 'En progreso'
+                    : tarea.estado === 'FINALIZADA'
+                      ? 'Finalizada'
+                      : 'Pendiente';
+
                 return (
                   <article
-                    className="tarjeta"
                     key={tarea.id}
+                    className={
+                      `tarjeta tarjeta-tablero ` +
+                      `tarjeta-vencimiento-${alerta.codigo}`
+                    }
                   >
-                    <h3>{tarea.titulo}</h3>
+                    <div className="tarjeta-tablero-encabezado">
+                      <h3>{tarea.titulo}</h3>
+
+                      <span
+                        className={
+                          `alerta-vencimiento ` +
+                          `alerta-${alerta.codigo}`
+                        }
+                      >
+                        {alerta.texto}
+                      </span>
+                    </div>
 
                     <p className="nombre-proyecto-tarea">
                       Proyecto: {nombreProyecto}
@@ -260,34 +341,26 @@ function TableroGeneral({
                       <span
                         className={`estado ${tarea.estado}`}
                       >
-                        {tarea.estado === 'EN_PROGRESO'
-                          ? 'En progreso'
-                          : tarea.estado === 'FINALIZADA'
-                            ? 'Finalizada'
-                            : 'Pendiente'}
+                        {nombreEstado}
                       </span>
 
                       <span
-                        className={`prioridad prioridad-${tarea.prioridad}`}
+                        className={
+                          `prioridad ` +
+                          `prioridad-${tarea.prioridad}`
+                        }
                       >
                         Prioridad: {tarea.prioridad}
                       </span>
 
                       <span>
-                        Vence:{' '}
+                        Fecha límite:{' '}
                         {formatearFecha(
                           tarea.fechaVencimiento
                         )}
                       </span>
-
-                      <span
-                        className={`alerta-vencimiento alerta-${alerta.codigo}`}
-                      >
-                        {alerta.texto}
-                      </span>
                     </div>
 
-                    {/* Navegación directa a la tarea */}
                     <div className="acciones-tarjeta">
                       <button
                         type="button"
