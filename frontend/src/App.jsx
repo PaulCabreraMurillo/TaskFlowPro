@@ -28,6 +28,7 @@ import TareaResumen from './components/TareaResumen';
 import './App.css';
 
 import TableroGeneral from './components/TableroGeneral';
+import ResponsablesPanel from './components/ResponsablesPanel';
 
 const formularioInicial = {
   nombre: '',
@@ -505,6 +506,22 @@ function App() {
           >
             Panel general
           </button>
+
+          <button
+            type="button"
+            className={
+              vistaActual === 'RESPONSABLES' ? 'activo' : ''
+            }
+            onClick={() => setVistaActual('RESPONSABLES')}
+          >
+            Responsables
+          </button>
+
+        {vistaActual === 'RESPONSABLES' && (
+          <ResponsablesPanel />
+        )}
+
+
         </nav>
 
         {vistaActual === 'TABLERO' && (
