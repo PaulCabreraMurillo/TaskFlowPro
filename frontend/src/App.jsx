@@ -12,7 +12,8 @@ import {
   obtenerTareasPorProyecto,
   crearTarea,
   actualizarTarea,
-  eliminarTarea
+  eliminarTarea,
+  obtenerTareas
 } from './services/tareaService';
 
 import ProyectoFormulario from './components/ProyectoFormulario';
@@ -25,6 +26,8 @@ import TareaLista from './components/TareaLista';
 import TareaResumen from './components/TareaResumen';
 
 import './App.css';
+
+import TableroGeneral from './components/TableroGeneral';
 
 const formularioInicial = {
   nombre: '',
@@ -41,6 +44,12 @@ const tareaInicial = {
 };
 
 function App() {
+  const [vistaActual, setVistaActual] = useState('PROYECTOS');
+  const [tareaPendienteAbrir, setTareaPendienteAbrir] = useState(null);
+
+  const [tareasGenerales, setTareasGenerales] = useState([]);
+  const [cargandoTablero, setCargandoTablero] = useState(false);
+  const [errorTablero, setErrorTablero] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
 
@@ -118,6 +127,7 @@ function App() {
       } catch (err) {
         if (activo) {
           setErrorTareas(err.message);
+          setTareaPendienteAbrir(null);
         }
       } finally {
         if (activo) {
@@ -261,8 +271,24 @@ function App() {
   }
 
   // Seleccionar proyecto para administrar sus tareas
+  function abrirTareaDesdeTablero(tarea) {
+    const existeProyecto = proyectos.some(
+      (proyecto) => proyecto.id === tarea.proyectoId
+    );
+
+    if (!existeProyecto) {
+      window.alert('No se encontró el proyecto de esta tarea.');
+      return;
+    }
+
+    setTareaPendienteAbrir({ id: tarea.id, proyectoId: tarea.proyectoId });
+    seleccionarProyecto(tarea.proyectoId);
+    setVistaActual('PROYECTOS');
+  }
+
   function seleccionarProyecto(id) {
     setProyectoSeleccionadoId(id);
+    if (id === null) setTareaPendienteAbrir(null);
     setFormularioTarea({ ...tareaInicial });
     setEditandoTareaId(null);
     setErrorTareas('');
@@ -270,6 +296,32 @@ function App() {
     setFiltroEstadoTarea('TODOS');
     setFiltroPrioridadTarea('TODAS');
   }
+
+  // Abrir el formulario de edición cuando se cargue la tarea seleccionada.
+  useEffect(() => {
+    if (!tareaPendienteAbrir || cargandoTareas || errorTareas) return;
+    if (proyectoSeleccionadoId !== tareaPendienteAbrir.proyectoId) return;
+
+    const tarea = tareas.find((item) => item.id === tareaPendienteAbrir.id);
+    if (!tarea) return;
+
+    setEditandoTareaId(tarea.id);
+    setFormularioTarea({
+      titulo: tarea.titulo,
+      descripcion: tarea.descripcion || '',
+      estado: tarea.estado,
+      prioridad: tarea.prioridad,
+      fechaVencimiento: tarea.fechaVencimiento || ''
+    });
+    setTareaPendienteAbrir(null);
+
+    // La sección de tareas está debajo del listado de proyectos.
+    window.requestAnimationFrame(() => {
+      document.getElementById('modulo-tareas')?.scrollIntoView({
+        behavior: 'smooth', block: 'start'
+      });
+    });
+  }, [tareaPendienteAbrir, tareas, cargandoTareas, errorTareas, proyectoSeleccionadoId]);
 
   function manejarCambioTarea(evento) {
     const { name, value } = evento.target;
@@ -412,6 +464,20 @@ function App() {
     (proyecto) => proyecto.id === proyectoSeleccionadoId
   );
 
+  async function cargarTablero() {
+    setCargandoTablero(true);
+    setErrorTablero('');
+
+    try {
+      const datos = await obtenerTareas();
+      setTareasGenerales(datos);
+    } catch (err) {
+      setErrorTablero(err.message);
+    } finally {
+      setCargandoTablero(false);
+    }
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -420,7 +486,41 @@ function App() {
       </header>
 
       <main className="contenido">
-        <ProyectoFormulario
+        <nav className="navegacion-principal" aria-label="Navegación principal">
+          <button
+            type="button"
+            className={vistaActual === 'PROYECTOS' ? 'activo' : ''}
+            onClick={() => setVistaActual('PROYECTOS')}
+          >
+            Proyectos
+          </button>
+
+          <button
+            type="button"
+            className={vistaActual === 'TABLERO' ? 'activo' : ''}
+            onClick={() => {
+              setVistaActual('TABLERO');
+              cargarTablero();
+            }}
+          >
+            Panel general
+          </button>
+        </nav>
+
+        {vistaActual === 'TABLERO' && (
+          <TableroGeneral
+            proyectos={proyectos}
+            tareas={tareasGenerales}
+            cargando={cargandoTablero}
+            error={errorTablero}
+            recargar={cargarTablero}
+            abrirTarea={abrirTareaDesdeTablero}
+          />
+        )}
+
+        {vistaActual === 'PROYECTOS' && (
+          <>
+            <ProyectoFormulario
           formulario={formulario}
           editandoId={editandoId}
           guardando={guardando}
@@ -498,7 +598,7 @@ function App() {
         </section>
 
         {proyectoSeleccionado && (
-          <section className="modulo-tareas">
+          <section className="modulo-tareas" id="modulo-tareas">
             <div className="modulo-tareas-encabezado">
               <div>
                 <h2>
@@ -530,8 +630,8 @@ function App() {
               </p>
             )}
             {!cargandoTareas && !errorTareas && (
-  <TareaResumen tareas={tareas} />
-)}
+              <TareaResumen tareas={tareas} />
+            )}
 
             <TareaFormulario
               formulario={formularioTarea}
@@ -558,6 +658,8 @@ function App() {
               />
             ) : null}
           </section>
+        )}
+          </>
         )}
       </main>
     </div>
