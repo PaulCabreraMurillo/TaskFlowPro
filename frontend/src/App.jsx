@@ -27,7 +27,7 @@ import TareaResumen from './components/TareaResumen';
 
 import './App.css';
 
-import TableroGeneral from './components/TableroGeneral';
+import PanelSeguimiento from './components/PanelSeguimiento';
 import ResponsablesPanel from './components/ResponsablesPanel';
 import { obtenerResponsables } from './services/responsableService';
 
@@ -619,7 +619,7 @@ onClick={async () => {
         </nav>
 
         {vistaActual === 'TABLERO' && (
-          <TableroGeneral
+          <PanelSeguimiento
             proyectos={proyectos}
             tareas={tareasGenerales}
             cargando={cargandoTablero}
