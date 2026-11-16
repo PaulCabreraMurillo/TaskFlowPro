@@ -110,6 +110,22 @@ desarrollado y probado.
 La autenticación, los permisos por usuario y el despliegue
 público no forman parte de este alcance.
 
+
+## Capturas de pantalla
+
+### Registro de proyectos
+![Registro de proyectos](docs/capturas/registrodeproyecto.png)
+
+### Gestión de proyectos
+![Proyecto registrado](docs/capturas/registrodeproyecto2.png)
+
+### Administración de responsables
+![Gestión de responsables](docs/capturas/registrodetareas.png)
+
+### Gestión y seguimiento de tareas
+![Gestión de tareas](docs/capturas/registroderesponsables.png)
+
+
 ## Repositorio
 
 https://github.com/PaulCabreraMurillo/TaskFlowPro
