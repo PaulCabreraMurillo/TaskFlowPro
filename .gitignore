@@ -49,3 +49,7 @@ Thumbs.db
 # Carpetas temporales del desarrollo
 /frontend-vite-temp/
 /respaldo-frontend/
+respaldos/
+*.backup
+*.dump
+.env.local
