@@ -1,76 +1,35 @@
 
-const API_URL = 'http://localhost:8080/api/proyectos';
+import { solicitarApi } from './apiClient';
+
+const RECURSO = 'proyectos';
 
 export async function obtenerProyectos() {
-  const respuesta = await fetch(API_URL);
-
-  if (!respuesta.ok) {
-    throw new Error(
-      `Error al obtener proyectos: ${respuesta.status}`
-    );
-  }
-
-  return await respuesta.json();
+  return solicitarApi(RECURSO, {
+    accion: 'consultar los proyectos'
+  });
 }
-
 
 export async function crearProyecto(proyecto) {
-  const respuesta = await fetch(API_URL, {
+  return solicitarApi(RECURSO, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(proyecto)
+    body: proyecto,
+    accion: 'crear el proyecto'
   });
-
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-
-    throw new Error(
-      detalle?.message ||
-      detalle?.mensaje ||
-      `Error al crear proyecto: ${respuesta.status}`
-    );
-  }
-
-  return await respuesta.json();
 }
 
-
 export async function actualizarProyecto(id, proyecto) {
-  const respuesta = await fetch(`${API_URL}/${id}`, {
+  return solicitarApi(`${RECURSO}/${id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(proyecto)
+    body: proyecto,
+    accion: 'actualizar el proyecto'
   });
-
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-
-    throw new Error(
-      detalle?.message ||
-      detalle?.mensaje ||
-      `Error al actualizar proyecto: ${respuesta.status}`
-    );
-  }
-
-  return await respuesta.json();
 }
 
 export async function eliminarProyecto(id) {
-  const respuesta = await fetch(`${API_URL}/${id}`, {
-    method: 'DELETE'
+  await solicitarApi(`${RECURSO}/${id}`, {
+    method: 'DELETE',
+    accion: 'eliminar el proyecto'
   });
 
-  if (!respuesta.ok) {
-    const detalle = await respuesta.json().catch(() => null);
-
-    throw new Error(
-      detalle?.message ||
-      detalle?.mensaje ||
-      `Error al eliminar proyecto: ${respuesta.status}`
-    );
-  }
+  return true;
 }
