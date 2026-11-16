@@ -4,6 +4,10 @@ import { useState } from 'react';
 import TareaResumen from './TareaResumen';
 
 import {
+  actualizarTarea
+} from '../services/tareaService';
+
+import {
   obtenerEstadoVencimiento,
   formatearFecha
 } from '../utils/vencimientoUtils';
@@ -39,9 +43,14 @@ function TarjetaTablero({
   tarea,
   nombreProyecto,
   abrirTarea,
-  cargando
+  cargando,
+  vistaKanban,
+  cambiarEstado,
+  guardandoTareaId
 }) {
   const alerta = obtenerEstadoVencimiento(tarea);
+
+  const guardando = guardandoTareaId === tarea.id;
 
   return (
     <article
@@ -89,6 +98,44 @@ function TarjetaTablero({
         </span>
       </div>
 
+      {vistaKanban && (
+        <div className="kanban-cambiar-estado">
+          <label htmlFor={`estado-tarea-${tarea.id}`}>
+            Cambiar estado
+          </label>
+
+          <select
+            id={`estado-tarea-${tarea.id}`}
+            value={tarea.estado}
+            onChange={(evento) =>
+              cambiarEstado(tarea, evento.target.value)
+            }
+            disabled={
+              cargando || guardandoTareaId !== null
+            }
+          >
+            <option value="PENDIENTE">
+              Pendiente
+            </option>
+            <option value="EN_PROGRESO">
+              En progreso
+            </option>
+            <option value="FINALIZADA">
+              Finalizada
+            </option>
+          </select>
+
+          {guardando && (
+            <span
+              className="kanban-guardando"
+              role="status"
+            >
+              Guardando cambio...
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="acciones-tarjeta">
         <button
           type="button"
@@ -96,6 +143,7 @@ function TarjetaTablero({
           onClick={() => abrirTarea(tarea)}
           disabled={
             cargando ||
+            guardandoTareaId !== null ||
             typeof abrirTarea !== 'function'
           }
         >
@@ -121,8 +169,14 @@ function TableroGeneral({
   const [vencimiento, setVencimiento] = useState('TODOS');
   const [ordenamiento, setOrdenamiento] = useState('FECHA');
 
-  // Nueva opción de visualización.
-  const [vistaTablero, setVistaTablero] = useState('LISTA');
+  const [vistaTablero, setVistaTablero] =
+    useState('LISTA');
+
+  const [guardandoTareaId, setGuardandoTareaId] =
+    useState(null);
+
+  const [mensajeEstado, setMensajeEstado] = useState('');
+  const [errorEstado, setErrorEstado] = useState('');
 
   const nombresProyectos = new Map(
     proyectos.map((proyecto) => [
@@ -130,6 +184,49 @@ function TableroGeneral({
       proyecto.nombre
     ])
   );
+
+  async function cambiarEstado(tarea, nuevoEstado) {
+    if (
+      guardandoTareaId !== null ||
+      cargando ||
+      tarea.estado === nuevoEstado
+    ) {
+      return;
+    }
+
+    setGuardandoTareaId(tarea.id);
+    setMensajeEstado('');
+    setErrorEstado('');
+
+    try {
+      const datos = {
+        titulo: tarea.titulo,
+        descripcion: tarea.descripcion || '',
+        estado: nuevoEstado,
+        prioridad: tarea.prioridad,
+        fechaVencimiento:
+          tarea.fechaVencimiento || null,
+        proyectoId: tarea.proyectoId
+      };
+
+      await actualizarTarea(tarea.id, datos);
+
+      // Volver a consultar PostgreSQL mediante la API.
+      await recargar();
+
+      setMensajeEstado(
+        `La tarea "${tarea.titulo}" cambió a ` +
+        `"${NOMBRES_ESTADO[nuevoEstado]}".`
+      );
+    } catch (err) {
+      setErrorEstado(
+        err.message ||
+        'No se pudo completar la operación.'
+      );
+    } finally {
+      setGuardandoTareaId(null);
+    }
+  }
 
   const tareasFiltradas = tareas.filter((tarea) => {
     const nombreProyecto =
@@ -236,6 +333,9 @@ function TableroGeneral({
         nombreProyecto={nombreProyecto}
         abrirTarea={abrirTarea}
         cargando={cargando}
+        vistaKanban={vistaTablero === 'KANBAN'}
+        cambiarEstado={cambiarEstado}
+        guardandoTareaId={guardandoTareaId}
       />
     );
   }
@@ -255,7 +355,7 @@ function TableroGeneral({
           type="button"
           className="boton-tareas"
           onClick={recargar}
-          disabled={cargando}
+          disabled={cargando || guardandoTareaId !== null}
         >
           {cargando ? 'Actualizando...' : 'Actualizar'}
         </button>
@@ -264,6 +364,18 @@ function TableroGeneral({
       {error && (
         <p className="mensaje-error" role="alert">
           Error: {error}
+        </p>
+      )}
+
+      {errorEstado && (
+        <p className="mensaje-error" role="alert">
+          Error: {errorEstado}
+        </p>
+      )}
+
+      {mensajeEstado && (
+        <p className="mensaje-exito" role="status">
+          {mensajeEstado}
         </p>
       )}
 
@@ -389,7 +501,6 @@ function TableroGeneral({
             </button>
           </div>
 
-          {/* Selector de vista */}
           <div className="selector-vista-tablero">
             <div>
               <strong>Visualización de tareas</strong>
@@ -458,6 +569,7 @@ function TableroGeneral({
                   >
                     <div className="kanban-encabezado">
                       <h3>{columna.titulo}</h3>
+
                       <span className="kanban-contador">
                         {tareasColumna.length}
                       </span>
