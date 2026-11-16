@@ -120,10 +120,10 @@ público no forman parte de este alcance.
 ![Proyecto registrado](docs/capturas/registrodeproyecto2.png)
 
 ### Administración de responsables
-![Gestión de responsables](docs/capturas/registrodetareas.png)
+![Gestión de responsables](docs/capturas/registroderesponsables.png)
 
 ### Gestión y seguimiento de tareas
-![Gestión de tareas](docs/capturas/registroderesponsables.png)
+![Gestión de tareas](docs/capturas/registrodetareas.png)
 
 
 ## Repositorio
