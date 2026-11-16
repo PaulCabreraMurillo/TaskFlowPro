@@ -195,3 +195,53 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+
+.barra-filtros {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 20px 0 12px;
+}
+
+.barra-filtros input,
+.barra-filtros select {
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.barra-filtros input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.barra-filtros select {
+  min-width: 180px;
+}
+
+.contador-proyectos {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.sin-resultados {
+  padding: 24px;
+  text-align: center;
+  background: #f8fafc;
+  border-radius: 10px;
+  color: #475569;
+}
+
+@media (max-width: 600px) {
+  .barra-filtros {
+    flex-direction: column;
+  }
+
+  .barra-filtros input,
+  .barra-filtros select {
+    width: 100%;
+  }
+}

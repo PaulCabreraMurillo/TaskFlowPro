@@ -8,6 +8,10 @@ import {
   eliminarProyecto
 } from './services/proyectoService';
 
+import ProyectoFormulario from './components/ProyectoFormulario';
+import ProyectoFiltros from './components/ProyectoFiltros';
+import ProyectoTarjeta from './components/ProyectoTarjeta';
+
 import './App.css';
 
 const formularioInicial = {
@@ -17,6 +21,9 @@ const formularioInicial = {
 };
 
 function App() {
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('TODOS');
+
   const [proyectos, setProyectos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -136,9 +143,7 @@ function App() {
       `¿Seguro que deseas eliminar "${proyecto.nombre}"?`
     );
 
-    if (!confirmado) {
-      return;
-    }
+    if (!confirmado) return;
 
     setError('');
     setMensaje('');
@@ -164,6 +169,20 @@ function App() {
     }
   }
 
+  const proyectosFiltrados = proyectos.filter((proyecto) => {
+    const texto = busqueda.trim().toLowerCase();
+
+    const coincideBusqueda =
+      (proyecto.nombre || '').toLowerCase().includes(texto) ||
+      (proyecto.descripcion || '').toLowerCase().includes(texto);
+
+    const coincideEstado =
+      filtroEstado === 'TODOS' ||
+      proyecto.estado === filtroEstado;
+
+    return coincideBusqueda && coincideEstado;
+  });
+
   return (
     <div className="app">
       <header className="header">
@@ -172,75 +191,15 @@ function App() {
       </header>
 
       <main className="contenido">
-        <section className="formulario-seccion">
-          <h2>
-            {editandoId !== null
-              ? 'Editar proyecto'
-              : 'Nuevo proyecto'}
-          </h2>
-
-          <form onSubmit={manejarSubmit}>
-            <div className="campo">
-              <label htmlFor="nombre">Nombre</label>
-              <input
-                id="nombre"
-                type="text"
-                name="nombre"
-                value={formulario.nombre}
-                onChange={manejarCambio}
-                maxLength={150}
-                required
-              />
-            </div>
-
-            <div className="campo">
-              <label htmlFor="descripcion">Descripción</label>
-              <textarea
-                id="descripcion"
-                name="descripcion"
-                value={formulario.descripcion}
-                onChange={manejarCambio}
-                maxLength={1000}
-                rows={3}
-              />
-            </div>
-
-            <div className="campo">
-              <label htmlFor="estado">Estado</label>
-              <select
-                id="estado"
-                name="estado"
-                value={formulario.estado}
-                onChange={manejarCambio}
-              >
-                <option value="ACTIVO">Activo</option>
-                <option value="EN_PROGRESO">En progreso</option>
-                <option value="FINALIZADO">Finalizado</option>
-              </select>
-            </div>
-
-            <div className="acciones-formulario">
-              <button type="submit" disabled={guardando}>
-                {guardando
-                  ? 'Guardando...'
-                  : editandoId !== null
-                    ? 'Guardar cambios'
-                    : 'Guardar proyecto'}
-              </button>
-
-              {editandoId !== null && (
-                <button
-                  type="button"
-                  className="boton-cancelar"
-                  onClick={cancelarEdicion}
-                  disabled={guardando}
-                >
-                  Cancelar
-                </button>
-              )}
-            </div>
-          </form>
-        </section>
+        <ProyectoFormulario
+          formulario={formulario}
+          editandoId={editandoId}
+          guardando={guardando}
+          eliminandoId={eliminandoId}
+          manejarCambio={manejarCambio}
+          manejarSubmit={manejarSubmit}
+          cancelarEdicion={cancelarEdicion}
+        />
 
         {mensaje && (
           <p className="mensaje-exito" role="status">
@@ -258,45 +217,41 @@ function App() {
           <h2>Mis proyectos</h2>
           <p>Proyectos registrados en PostgreSQL.</p>
 
+          <ProyectoFiltros
+            busqueda={busqueda}
+            setBusqueda={setBusqueda}
+            filtroEstado={filtroEstado}
+            setFiltroEstado={setFiltroEstado}
+            total={proyectos.length}
+            mostrados={proyectosFiltrados.length}
+          />
+
           {cargando && <p>Cargando proyectos...</p>}
 
           {!cargando && !error && proyectos.length === 0 && (
             <p>No hay proyectos registrados.</p>
           )}
 
-          {!cargando && proyectos.length > 0 && (
+          {!cargando &&
+            !error &&
+            proyectos.length > 0 &&
+            proyectosFiltrados.length === 0 && (
+              <p className="sin-resultados">
+                No se encontraron proyectos con los filtros seleccionados.
+              </p>
+            )}
+
+          {!cargando && proyectosFiltrados.length > 0 && (
             <div className="proyectos">
-              {proyectos.map((proyecto) => (
-                <div className="tarjeta" key={proyecto.id}>
-                  <h3>{proyecto.nombre}</h3>
-                  <p>{proyecto.descripcion}</p>
-
-                  <span className={`estado ${proyecto.estado}`}>
-                    {proyecto.estado}
-                  </span>
-
-                  <div className="acciones-tarjeta">
-                    <button
-                      type="button"
-                      className="boton-editar"
-                      onClick={() => iniciarEdicion(proyecto)}
-                      disabled={guardando || eliminandoId !== null}
-                    >
-                      Editar
-                    </button>
-
-                    <button
-                      type="button"
-                      className="boton-eliminar"
-                      onClick={() => manejarEliminar(proyecto)}
-                      disabled={guardando || eliminandoId !== null}
-                    >
-                      {eliminandoId === proyecto.id
-                        ? 'Eliminando...'
-                        : 'Eliminar'}
-                    </button>
-                  </div>
-                </div>
+              {proyectosFiltrados.map((proyecto) => (
+                <ProyectoTarjeta
+                  key={proyecto.id}
+                  proyecto={proyecto}
+                  iniciarEdicion={iniciarEdicion}
+                  manejarEliminar={manejarEliminar}
+                  guardando={guardando}
+                  eliminandoId={eliminandoId}
+                />
               ))}
             </div>
           )}
