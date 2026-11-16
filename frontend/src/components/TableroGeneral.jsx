@@ -2,6 +2,12 @@
 import { useState } from 'react';
 
 import TareaResumen from './TareaResumen';
+
+import {
+  obtenerNombreResponsable,
+  coincideFiltroResponsable
+} from '../utils/responsableUtils';
+
 import { actualizarTarea } from '../services/tareaService';
 
 import {
@@ -27,9 +33,11 @@ const COLUMNAS_KANBAN = [
   { codigo: 'FINALIZADA', titulo: 'Finalizadas' }
 ];
 
+
 function TarjetaTablero({
   tarea,
   nombreProyecto,
+  responsables,
   abrirTarea,
   cargando,
   vistaKanban,
@@ -74,9 +82,12 @@ function TarjetaTablero({
         </span>
       </div>
 
-      <p className="nombre-proyecto-tarea">
-        Proyecto: {nombreProyecto}
-      </p>
+      
+<p className="responsable-tarea">
+  <strong>Responsable:</strong>{' '}
+  {obtenerNombreResponsable(tarea, responsables)}
+</p>
+
 
       <p>{tarea.descripcion || 'Sin descripción'}</p>
 
@@ -160,18 +171,22 @@ function TarjetaTablero({
   );
 }
 
+
 function TableroGeneral({
   proyectos,
   tareas,
+  responsables = [],
   cargando,
   error,
   recargar,
   abrirTarea
 }) {
+
   const [busqueda, setBusqueda] = useState('');
   const [proyectoId, setProyectoId] = useState('TODOS');
   const [estado, setEstado] = useState('TODOS');
   const [prioridad, setPrioridad] = useState('TODAS');
+  const [responsableId, setResponsableId] = useState('TODOS');
   const [vencimiento, setVencimiento] = useState('TODOS');
   const [ordenamiento, setOrdenamiento] = useState('FECHA');
 
@@ -317,18 +332,28 @@ function TableroGeneral({
     const nombreProyecto =
       nombresProyectos.get(tarea.proyectoId) || '';
 
+    
+const nombreResponsable =
+  obtenerNombreResponsable(tarea, responsables);
+
+
     const texto = busqueda.trim().toLowerCase();
 
-    const coincideBusqueda =
-      (tarea.titulo || '')
-        .toLowerCase()
-        .includes(texto) ||
-      (tarea.descripcion || '')
-        .toLowerCase()
-        .includes(texto) ||
-      nombreProyecto
-        .toLowerCase()
-        .includes(texto);
+    
+const coincideBusqueda =
+  (tarea.titulo || '')
+    .toLowerCase()
+    .includes(texto) ||
+  (tarea.descripcion || '')
+    .toLowerCase()
+    .includes(texto) ||
+  nombreProyecto
+    .toLowerCase()
+    .includes(texto) ||
+  nombreResponsable
+    .toLowerCase()
+    .includes(texto);
+
 
     const coincideProyecto =
       proyectoId === 'TODOS' ||
@@ -346,14 +371,25 @@ function TableroGeneral({
       vencimiento === 'TODOS' ||
       obtenerEstadoVencimiento(tarea).codigo ===
         vencimiento;
+    
+    
+const coincideResponsable =
+  coincideFiltroResponsable(
+    tarea,
+    responsableId
+  );
+       
 
-    return (
-      coincideBusqueda &&
-      coincideProyecto &&
-      coincideEstado &&
-      coincidePrioridad &&
-      coincideVencimiento
-    );
+    
+return (
+  coincideBusqueda &&
+  coincideProyecto &&
+  coincideEstado &&
+  coincidePrioridad &&
+  coincideVencimiento &&
+  coincideResponsable
+);
+
   });
 
   const tareasOrdenadas = [...tareasFiltradas].sort(
@@ -400,6 +436,7 @@ function TableroGeneral({
     setPrioridad('TODAS');
     setVencimiento('TODOS');
     setOrdenamiento('FECHA');
+    setResponsableId('TODOS');
   }
 
   function renderizarTarjeta(tarea) {
@@ -412,6 +449,7 @@ function TableroGeneral({
         key={tarea.id}
         tarea={tarea}
         nombreProyecto={nombreProyecto}
+        responsables={responsables}
         abrirTarea={abrirTarea}
         cargando={cargando}
         vistaKanban={vistaTablero === 'KANBAN'}
@@ -479,6 +517,34 @@ function TableroGeneral({
                 setBusqueda(evento.target.value)
               }
             />
+
+
+<select
+  aria-label="Filtrar por responsable"
+  value={responsableId}
+  onChange={(evento) =>
+    setResponsableId(evento.target.value)
+  }
+>
+  <option value="TODOS">
+    Todos los responsables
+  </option>
+
+  <option value="SIN_RESPONSABLE">
+    Sin responsable
+  </option>
+
+  {responsables.map((responsable) => (
+    <option
+      key={responsable.id}
+      value={String(responsable.id)}
+    >
+      {responsable.nombre}
+      {responsable.activo ? '' : ' (inactivo)'}
+    </option>
+  ))}
+</select>
+
 
             <select
               aria-label="Filtrar por proyecto"

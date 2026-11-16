@@ -6,6 +6,10 @@ import {
   obtenerEstadoVencimiento
 } from '../utils/vencimientoUtils';
 
+import {
+  coincideFiltroResponsable
+} from '../utils/responsableUtils';
+
 function TareaLista({
   tareas,
   filtroEstado,
@@ -15,9 +19,13 @@ function TareaLista({
   iniciarEdicion,
   manejarEliminar,
   eliminandoId,
-  guardando
+  guardando,
+  responsables = []
 }) {
   const [filtroVencimiento, setFiltroVencimiento] =
+    useState('TODOS');
+
+  const [filtroResponsable, setFiltroResponsable] =
     useState('TODOS');
 
   const tareasFiltradas = tareas.filter((tarea) => {
@@ -35,10 +43,17 @@ function TareaLista({
       filtroVencimiento === 'TODOS' ||
       vencimiento.codigo === filtroVencimiento;
 
+    const coincideResponsable =
+      coincideFiltroResponsable(
+        tarea,
+        filtroResponsable
+      );
+
     return (
       coincideEstado &&
       coincidePrioridad &&
-      coincideVencimiento
+      coincideVencimiento &&
+      coincideResponsable
     );
   });
 
@@ -87,10 +102,37 @@ function TareaLista({
           <option value="SIN_FECHA">Sin fecha</option>
           <option value="FINALIZADA">Finalizadas</option>
         </select>
+
+        <select
+          aria-label="Filtrar tareas por responsable"
+          value={filtroResponsable}
+          onChange={(evento) =>
+            setFiltroResponsable(evento.target.value)
+          }
+        >
+          <option value="TODOS">
+            Todos los responsables
+          </option>
+
+          <option value="SIN_RESPONSABLE">
+            Sin responsable
+          </option>
+
+          {responsables.map((responsable) => (
+            <option
+              key={responsable.id}
+              value={String(responsable.id)}
+            >
+              {responsable.nombre}
+              {responsable.activo ? '' : ' (inactivo)'}
+            </option>
+          ))}
+        </select>
       </div>
 
       <p className="contador-proyectos">
-        Mostrando {tareasFiltradas.length} de {tareas.length} tareas.
+        Mostrando {tareasFiltradas.length} de{' '}
+        {tareas.length} tareas.
       </p>
 
       {tareas.length === 0 ? (
@@ -111,6 +153,7 @@ function TareaLista({
               manejarEliminar={manejarEliminar}
               eliminandoId={eliminandoId}
               guardando={guardando}
+              responsables={responsables}
             />
           ))}
         </div>

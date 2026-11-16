@@ -579,10 +579,24 @@ onClick={async () => {
           <button
             type="button"
             className={vistaActual === 'TABLERO' ? 'activo' : ''}
-            onClick={() => {
-              setVistaActual('TABLERO');
-              cargarTablero();
-            }}
+            
+onClick={async () => {
+  setVistaActual('TABLERO');
+  cargarTablero();
+
+  setCargandoResponsables(true);
+  setErrorResponsables('');
+
+  try {
+    const datos = await obtenerResponsables();
+    setResponsables(datos);
+  } catch (err) {
+    setErrorResponsables(err.message);
+  } finally {
+    setCargandoResponsables(false);
+  }
+}}
+
           >
             Panel general
           </button>
@@ -612,6 +626,7 @@ onClick={async () => {
             error={errorTablero}
             recargar={cargarTablero}
             abrirTarea={abrirTareaDesdeTablero}
+            responsables={responsables}
           />
         )}
 
@@ -757,6 +772,7 @@ onClick={async () => {
                 manejarEliminar={manejarEliminarTarea}
                 eliminandoId={eliminandoTareaId}
                 guardando={guardandoTarea}
+                responsables={responsables}
               />
             ) : null}
           </section>

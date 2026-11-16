@@ -4,6 +4,10 @@ import {
   formatearFecha
 } from '../utils/vencimientoUtils';
 
+import {
+  obtenerNombreResponsable
+} from '../utils/responsableUtils';
+
 const nombresEstado = {
   PENDIENTE: 'Pendiente',
   EN_PROGRESO: 'En progreso',
@@ -15,9 +19,15 @@ function TareaTarjeta({
   iniciarEdicion,
   manejarEliminar,
   eliminandoId,
-  guardando
+  guardando,
+  responsables = []
 }) {
   const vencimiento = obtenerEstadoVencimiento(tarea);
+
+  const nombreResponsable = obtenerNombreResponsable(
+    tarea,
+    responsables
+  );
 
   return (
     <article className="tarjeta tarea-tarjeta">
@@ -32,6 +42,11 @@ function TareaTarjeta({
       </div>
 
       <p>{tarea.descripcion || 'Sin descripción'}</p>
+
+      <p className="responsable-tarea">
+        <strong>Responsable:</strong>{' '}
+        {nombreResponsable}
+      </p>
 
       <div className="tarea-detalles">
         <span className={`estado ${tarea.estado}`}>
