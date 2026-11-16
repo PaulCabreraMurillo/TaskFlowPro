@@ -1,5 +1,10 @@
 
+import { useState } from 'react';
 import TareaTarjeta from './TareaTarjeta';
+
+import {
+  obtenerEstadoVencimiento
+} from '../utils/vencimientoUtils';
 
 function TareaLista({
   tareas,
@@ -12,6 +17,9 @@ function TareaLista({
   eliminandoId,
   guardando
 }) {
+  const [filtroVencimiento, setFiltroVencimiento] =
+    useState('TODOS');
+
   const tareasFiltradas = tareas.filter((tarea) => {
     const coincideEstado =
       filtroEstado === 'TODOS' ||
@@ -21,7 +29,17 @@ function TareaLista({
       filtroPrioridad === 'TODAS' ||
       tarea.prioridad === filtroPrioridad;
 
-    return coincideEstado && coincidePrioridad;
+    const vencimiento = obtenerEstadoVencimiento(tarea);
+
+    const coincideVencimiento =
+      filtroVencimiento === 'TODOS' ||
+      vencimiento.codigo === filtroVencimiento;
+
+    return (
+      coincideEstado &&
+      coincidePrioridad &&
+      coincideVencimiento
+    );
   });
 
   return (
@@ -53,6 +71,21 @@ function TareaLista({
           <option value="BAJA">Baja</option>
           <option value="MEDIA">Media</option>
           <option value="ALTA">Alta</option>
+        </select>
+
+        <select
+          aria-label="Filtrar tareas por vencimiento"
+          value={filtroVencimiento}
+          onChange={(evento) =>
+            setFiltroVencimiento(evento.target.value)
+          }
+        >
+          <option value="TODOS">Todos los vencimientos</option>
+          <option value="VENCIDA">Vencidas</option>
+          <option value="PROXIMA">Próximas a vencer</option>
+          <option value="AL_DIA">Al día</option>
+          <option value="SIN_FECHA">Sin fecha</option>
+          <option value="FINALIZADA">Finalizadas</option>
         </select>
       </div>
 

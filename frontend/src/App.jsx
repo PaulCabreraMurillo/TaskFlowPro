@@ -19,8 +19,10 @@ import ProyectoFormulario from './components/ProyectoFormulario';
 import ProyectoFiltros from './components/ProyectoFiltros';
 import ProyectoTarjeta from './components/ProyectoTarjeta';
 
+
 import TareaFormulario from './components/TareaFormulario';
 import TareaLista from './components/TareaLista';
+import TareaResumen from './components/TareaResumen';
 
 import './App.css';
 
@@ -527,6 +529,9 @@ function App() {
                 Error: {errorTareas}
               </p>
             )}
+            {!cargandoTareas && !errorTareas && (
+  <TareaResumen tareas={tareas} />
+)}
 
             <TareaFormulario
               formulario={formularioTarea}

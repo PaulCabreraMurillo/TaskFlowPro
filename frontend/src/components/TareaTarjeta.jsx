@@ -1,4 +1,9 @@
 
+import {
+  obtenerEstadoVencimiento,
+  formatearFecha
+} from '../utils/vencimientoUtils';
+
 const nombresEstado = {
   PENDIENTE: 'Pendiente',
   EN_PROGRESO: 'En progreso',
@@ -12,6 +17,8 @@ function TareaTarjeta({
   eliminandoId,
   guardando
 }) {
+  const vencimiento = obtenerEstadoVencimiento(tarea);
+
   return (
     <article className="tarjeta tarea-tarjeta">
       <div className="tarea-encabezado">
@@ -24,9 +31,7 @@ function TareaTarjeta({
         </span>
       </div>
 
-      <p>
-        {tarea.descripcion || 'Sin descripción'}
-      </p>
+      <p>{tarea.descripcion || 'Sin descripción'}</p>
 
       <div className="tarea-detalles">
         <span className={`estado ${tarea.estado}`}>
@@ -34,7 +39,13 @@ function TareaTarjeta({
         </span>
 
         <span>
-          Vence: {tarea.fechaVencimiento || 'Sin fecha'}
+          Fecha límite: {formatearFecha(tarea.fechaVencimiento)}
+        </span>
+
+        <span
+          className={`alerta-vencimiento alerta-${vencimiento.codigo}`}
+        >
+          {vencimiento.texto}
         </span>
       </div>
 
